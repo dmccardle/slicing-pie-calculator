@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Form/Select";
 import { Card, CardBody } from "@/components/ui/Card";
 import { ContributionForm, ContributionRow } from "@/components/slicing-pie";
-import type { ContributionType } from "@/types/slicingPie";
+import { Modal } from "@/components/ui/Modal";
+import type { ContributionType, Contribution } from "@/types/slicingPie";
 import { formatSlices } from "@/utils/slicingPie";
 
 type SortField = "date" | "contributorId" | "type" | "value" | "slices";
@@ -29,7 +30,10 @@ export default function ContributionsPage() {
     contributions,
     company,
     addContribution,
+    updateContribution,
+    removeContribution,
     getContributorById,
+    getContributionById,
     isLoading,
   } = useSlicingPieContext();
 
@@ -37,6 +41,8 @@ export default function ContributionsPage() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Filters
   const [filterContributor, setFilterContributor] = useState("");
@@ -47,7 +53,27 @@ export default function ContributionsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const handleAdd = () => {
+    setEditingContribution(null);
     setIsFormOpen(true);
+  };
+
+  const handleEdit = (contributionId: string) => {
+    const contribution = getContributionById(contributionId);
+    if (contribution) {
+      setEditingContribution(contribution);
+      setIsFormOpen(true);
+    }
+  };
+
+  const handleDelete = (contributionId: string) => {
+    setDeleteConfirmId(contributionId);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      removeContribution(deleteConfirmId);
+      setDeleteConfirmId(null);
+    }
   };
 
   const handleFormSubmit = (data: {
@@ -62,16 +88,30 @@ export default function ContributionsPage() {
     setIsSubmitting(true);
 
     try {
-      addContribution({
-        contributorId: data.contributorId,
-        type: data.type,
-        value: data.value,
-        description: data.description,
-        date: data.date,
-        multiplier: data.multiplier,
-        slices: data.slices,
-      });
+      if (editingContribution) {
+        // Update existing contribution
+        updateContribution(editingContribution.id, {
+          type: data.type,
+          value: data.value,
+          description: data.description,
+          date: data.date,
+          multiplier: data.multiplier,
+          slices: data.slices,
+        });
+      } else {
+        // Add new contribution
+        addContribution({
+          contributorId: data.contributorId,
+          type: data.type,
+          value: data.value,
+          description: data.description,
+          date: data.date,
+          multiplier: data.multiplier,
+          slices: data.slices,
+        });
+      }
       setIsFormOpen(false);
+      setEditingContribution(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -79,6 +119,7 @@ export default function ContributionsPage() {
 
   const handleFormClose = () => {
     setIsFormOpen(false);
+    setEditingContribution(null);
   };
 
   const handleSort = (field: SortField) => {
@@ -271,6 +312,9 @@ export default function ContributionsPage() {
                         <SortIndicator field="slices" />
                       </span>
                     </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -281,6 +325,8 @@ export default function ContributionsPage() {
                         key={contribution.id}
                         contribution={contribution}
                         contributorName={contributor?.name || "Unknown"}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
                       />
                     );
                   })}
@@ -291,7 +337,7 @@ export default function ContributionsPage() {
         </>
       )}
 
-      {/* Add Contribution Form Modal */}
+      {/* Contribution Form Modal (Add/Edit) */}
       <ContributionForm
         isOpen={isFormOpen}
         onClose={handleFormClose}
@@ -299,7 +345,35 @@ export default function ContributionsPage() {
         contributors={contributors}
         company={company}
         isSubmitting={isSubmitting}
+        contribution={editingContribution || undefined}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        title="Delete Contribution"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete this contribution? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteConfirmId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDelete}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

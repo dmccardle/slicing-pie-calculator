@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Form/Input";
 import { Select } from "@/components/ui/Form/Select";
 import { Button } from "@/components/ui/Button";
-import type { ContributionType, Contributor, Company } from "@/types/slicingPie";
+import type { ContributionType, Contributor, Company, Contribution } from "@/types/slicingPie";
 import { MULTIPLIERS, calculateSlices, formatSlices } from "@/utils/slicingPie";
 import { SuggestValueButton, AIChatModal } from "@/components/ai";
 import type { AISuggestion, ValuationContext } from "@/types/ai";
@@ -26,6 +26,7 @@ interface ContributionFormProps {
   contributors: Contributor[];
   company?: Company;
   isSubmitting?: boolean;
+  contribution?: Contribution; // Optional - when provided, form is in edit mode
 }
 
 const CONTRIBUTION_TYPES: { value: ContributionType; label: string; description: string }[] = [
@@ -51,21 +52,37 @@ export function ContributionForm({
   contributors,
   company,
   isSubmitting = false,
+  contribution,
 }: ContributionFormProps) {
   const [formData, setFormData] = useState<ContributionFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<Partial<Record<keyof ContributionFormData, string>>>({});
   const [showAIChat, setShowAIChat] = useState(false);
   const { isConfigured: isAIConfigured } = useAISettings();
 
+  // Determine if we're in edit mode
+  const isEditMode = !!contribution;
+
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        ...INITIAL_FORM_DATA,
-        date: new Date().toISOString().split("T")[0],
-      });
+      if (contribution) {
+        // Pre-populate form with existing contribution data
+        setFormData({
+          contributorId: contribution.contributorId,
+          type: contribution.type,
+          value: contribution.value,
+          description: contribution.description || "",
+          date: contribution.date,
+        });
+      } else {
+        // Reset to initial state for new contribution
+        setFormData({
+          ...INITIAL_FORM_DATA,
+          date: new Date().toISOString().split("T")[0],
+        });
+      }
       setErrors({});
     }
-  }, [isOpen]);
+  }, [isOpen, contribution]);
 
   const selectedContributor = useMemo(() => {
     return contributors.find((c) => c.id === formData.contributorId);
@@ -185,16 +202,28 @@ export function ContributionForm({
   }));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Log Contribution">
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Contribution" : "Log Contribution"}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Select
-          label="Contributor"
-          options={contributorOptions}
-          placeholder="Select contributor"
-          value={formData.contributorId}
-          onChange={(e) => handleChange("contributorId", e.target.value)}
-          error={errors.contributorId}
-        />
+        {isEditMode ? (
+          // Show contributor name as read-only text in edit mode
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contributor
+            </label>
+            <div className="px-3 py-2 bg-gray-100 rounded-md text-gray-700">
+              {selectedContributor?.name || "Unknown Contributor"}
+            </div>
+          </div>
+        ) : (
+          <Select
+            label="Contributor"
+            options={contributorOptions}
+            placeholder="Select contributor"
+            value={formData.contributorId}
+            onChange={(e) => handleChange("contributorId", e.target.value)}
+            error={errors.contributorId}
+          />
+        )}
 
         <Select
           label="Contribution Type"
@@ -275,7 +304,7 @@ export function ContributionForm({
             Cancel
           </Button>
           <Button type="submit" variant="primary" isLoading={isSubmitting}>
-            Log Contribution
+            {isEditMode ? "Save Changes" : "Log Contribution"}
           </Button>
         </div>
       </form>
