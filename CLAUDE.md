@@ -10,6 +10,13 @@
 
 **EVERY implementation MUST follow these non-negotiable rules:**
 
+**Speckit Workflow**: ALWAYS use Speckit for new features and change requests:
+  1. `/speckit.specify` - Create feature specification from user description
+  2. `/speckit.plan` - Generate implementation plan and design artifacts
+  3. `/speckit.tasks` - Break down into actionable tasks
+  4. `/speckit.implement` - Execute the implementation
+  Never skip this workflow for features. Only skip for trivial bug fixes or single-line changes.
+
 **Git Identity**: ALWAYS use Claude Code Bot identity for commits → `docs/07-deployment/claude-git-workflow.md`
   ```bash
   git config user.name "Claude Code Bot"
@@ -210,12 +217,14 @@ This documentation system ensures that Claude always has context about:
 - **AI development workflow** (Speckit → Figma → Claude Code)
 
 **When implementing features:**
-- You should receive handoff packages from Speckit (specs) and Figma (designs + code)
-- Use Figma-generated code (from v0 or plugins) as a starting point
-- Refine the code to follow all project standards
-- Always use the Explore agent to understand the codebase first
-- Always use the Plan agent for multi-file features
-- Request approval before major changes
+- **ALWAYS use the Speckit workflow** for new features and change requests:
+  1. `/speckit.specify` - Capture requirements as a specification
+  2. `/speckit.plan` - Design the implementation (tech stack, architecture, contracts)
+  3. `/speckit.tasks` - Generate actionable task breakdown
+  4. `/speckit.implement` - Execute tasks systematically
+- Only skip Speckit for trivial fixes (typos, single-line bug fixes, config changes)
+- Use the Explore agent to understand the codebase before planning
+- Request approval before major architectural changes
 - See `docs/09-saas-specific/ai-development-workflow.md` for complete workflow
 
 **CRITICAL REQUIREMENTS (Every Implementation):**
