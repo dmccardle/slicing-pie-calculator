@@ -249,14 +249,25 @@ export function ContributionForm({
         />
 
         {/* AI Suggestion Tools */}
-        {isAIConfigured && valuationContext && (
-          <SuggestValueButton
-            description={formData.description || `${formData.type} contribution`}
-            context={valuationContext}
-            onSuggestion={handleAISuggestion}
-            onOpenChat={() => setShowAIChat(true)}
-            disabled={!selectedContributor}
-          />
+        {isAIConfigured && (
+          <div className="space-y-2">
+            {!selectedContributor && (
+              <p className="text-xs text-gray-500">
+                Select a contributor above to enable AI-assisted valuation
+              </p>
+            )}
+            <SuggestValueButton
+              description={formData.description || `${formData.type} contribution`}
+              context={valuationContext || {
+                contributorName: "",
+                contributorHourlyRate: 0,
+                companyName: company?.name || "My Startup",
+              }}
+              onSuggestion={handleAISuggestion}
+              onOpenChat={() => setShowAIChat(true)}
+              disabled={!selectedContributor}
+            />
+          </div>
         )}
 
         <div className="flex justify-end gap-3 pt-4">
