@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
+import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { Contribution, ContributionType } from "@/types/slicingPie";
 import { formatSlices, formatContributionValue } from "@/utils/slicingPie";
 
 interface ContributionRowProps {
   contribution: Contribution;
   contributorName: string;
+  onEdit?: (contributionId: string) => void;
+  onDelete?: (contributionId: string) => void;
 }
 
 const TYPE_LABELS: Record<ContributionType, string> = {
@@ -25,7 +28,12 @@ const TYPE_COLORS: Record<ContributionType, string> = {
   relationship: "bg-pink-100 text-pink-800",
 };
 
-export function ContributionRow({ contribution, contributorName }: ContributionRowProps) {
+export function ContributionRow({
+  contribution,
+  contributorName,
+  onEdit,
+  onDelete,
+}: ContributionRowProps) {
   return (
     <tr className="hover:bg-gray-50">
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
@@ -49,6 +57,30 @@ export function ContributionRow({ contribution, contributorName }: ContributionR
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
         {formatSlices(contribution.slices)}
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 text-right">
+        <div className="flex justify-end gap-2">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(contribution.id)}
+              className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+              title="Edit contribution"
+            >
+              <PencilSquareIcon className="h-5 w-5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(contribution.id)}
+              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+              title="Delete contribution"
+            >
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );

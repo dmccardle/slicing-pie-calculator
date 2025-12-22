@@ -52,6 +52,7 @@ interface SlicingPieContextValue {
     data: Partial<Omit<Contribution, "id" | "createdAt" | "updatedAt">>
   ) => Contribution | null;
   removeContribution: (id: string) => boolean;
+  getContributionById: (id: string) => Contribution | undefined;
 
   // Computed values
   totalSlices: number;
@@ -100,6 +101,7 @@ export function SlicingPieProvider({
     add: addContributionEntity,
     update: updateContributionEntity,
     remove: removeContributionEntity,
+    getById: getContributionById,
     clear: clearContributions,
     isLoading: contributionsLoading,
   } = useEntities<Entity<Omit<Contribution, "id" | "createdAt" | "updatedAt">>>(
@@ -247,6 +249,9 @@ export function SlicingPieProvider({
       addContribution,
       updateContribution,
       removeContribution,
+      getContributionById: getContributionById as (
+        id: string
+      ) => Contribution | undefined,
       totalSlices,
       mostRecentContribution,
       loadSampleData,
@@ -268,6 +273,7 @@ export function SlicingPieProvider({
       addContribution,
       updateContribution,
       removeContribution,
+      getContributionById,
       totalSlices,
       mostRecentContribution,
       loadSampleData,

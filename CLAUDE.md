@@ -285,6 +285,8 @@ To customize this template for your project:
 - Browser localStorage (no external database) (001-template-core)
 - TypeScript 5.x (strict mode) + Tailwind CSS 4, Recharts (charts), xlsx (Excel), jsPDF (PDF) (001-slicing-pie-calculator)
 - Browser localStorage (local-first architecture) (001-slicing-pie-calculator)
+- TypeScript 5.x (strict mode) + React Context, existing ContributionForm componen (002-edit-contributions)
+- localStorage via existing useLocalStorage hook (002-edit-contributions)
 
 ## Recent Changes
 - 001-template-core: Added TypeScript 5.x (strict mode) + Next.js 16 (App Router), React 19, Tailwind CSS 4, Recharts, xlsx, jsPDF
