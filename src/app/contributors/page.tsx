@@ -1,18 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useSlicingPieContext } from "@/context/SlicingPieContext";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ContributorCard, ContributorForm } from "@/components/slicing-pie";
-import type { Contributor } from "@/types/slicingPie";
+import type { Contributor, ContributionType } from "@/types/slicingPie";
+import { calculateSlices, MULTIPLIERS } from "@/utils/slicingPie";
 
 export default function ContributorsPage() {
   const {
     contributorsWithEquity,
+    contributions,
+    company,
     addContributor,
     updateContributor,
     removeContributor,
+    addContribution,
     getContributorById,
     isLoading,
   } = useSlicingPieContext();
@@ -21,6 +25,15 @@ export default function ContributorsPage() {
   const [editingContributor, setEditingContributor] = useState<Contributor | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Get recent contributions for the contributor being edited
+  const recentContributions = useMemo(() => {
+    if (!editingContributor) return [];
+    return contributions
+      .filter((c) => c.contributorId === editingContributor.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [editingContributor, contributions]);
 
   const handleAdd = () => {
     setEditingContributor(null);
@@ -70,6 +83,27 @@ export default function ContributorsPage() {
   const handleFormClose = () => {
     setIsFormOpen(false);
     setEditingContributor(null);
+  };
+
+  const handleQuickAddContribution = (data: {
+    type: ContributionType;
+    value: number;
+    description: string;
+    date: string;
+  }) => {
+    if (!editingContributor) return;
+
+    const slices = calculateSlices(data.type, data.value, editingContributor.hourlyRate);
+
+    addContribution({
+      contributorId: editingContributor.id,
+      type: data.type,
+      value: data.value,
+      description: data.description,
+      date: data.date,
+      multiplier: MULTIPLIERS[data.type],
+      slices,
+    });
   };
 
   const contributorToDelete = deleteConfirmId
@@ -141,6 +175,9 @@ export default function ContributorsPage() {
         onSubmit={handleFormSubmit}
         contributor={editingContributor}
         isSubmitting={isSubmitting}
+        onAddContribution={handleQuickAddContribution}
+        recentContributions={recentContributions}
+        company={company}
       />
 
       {/* Delete Confirmation Modal */}

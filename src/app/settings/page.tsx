@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { useSlicingPieContext } from "@/context/SlicingPieContext";
-import { Card, CardHeader, CardBody, CardFooter, Button, Input, Modal } from "@/components/ui";
+import { Card, CardHeader, CardBody, CardFooter, Button, Input, Modal, Select } from "@/components/ui";
 import { ExportPanel } from "@/components/export";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import { formatSlices, formatCurrency, formatEquityPercentage } from "@/utils/slicingPie";
+import { useAISettings } from "@/hooks/useAISettings";
+import { AI_MODELS, type AIModel } from "@/types/ai";
+import { testApiKey } from "@/services/claude";
 
 interface SlicingPieExportData {
   version: string;
@@ -67,6 +70,44 @@ export default function SettingsPage() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
+
+  // AI Settings
+  const {
+    apiKey,
+    modelPreference,
+    isConfigured: isAIConfigured,
+    setModelPreference,
+  } = useAISettings();
+
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTestApiKey = async () => {
+    if (!apiKey) return;
+
+    setIsTestingKey(true);
+    setApiKeyTestResult(null);
+
+    try {
+      const result = await testApiKey(apiKey, modelPreference);
+      setApiKeyTestResult({
+        success: result.success,
+        message: result.success ? "API key is valid!" : result.error || "Invalid API key",
+      });
+    } catch {
+      setApiKeyTestResult({
+        success: false,
+        message: "Failed to test API key. Check your connection.",
+      });
+    } finally {
+      setIsTestingKey(false);
+    }
+  };
+
+  const modelOptions = Object.entries(AI_MODELS).map(([value, { name, description }]) => ({
+    value,
+    label: `${name} - ${description}`,
+  }));
 
   const handleClearData = () => {
     clearAllData();
@@ -259,6 +300,97 @@ export default function SettingsPage() {
             onChange={(e) => updateCompany({ description: e.target.value })}
             helperText="A brief description of your company (optional)"
           />
+        </CardBody>
+      </Card>
+
+      {/* AI Features */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">AI-Assisted Valuation</h2>
+            {isAIConfigured ? (
+              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+                Configured
+              </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                Not Configured
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Enable AI-powered suggestions for valuing contributions. Claude will help you
+            determine fair market values for ideas, relationships, and hourly rates.
+          </p>
+
+          {/* API Key Configuration */}
+          {isAIConfigured ? (
+            <div className="rounded-md bg-green-50 p-3">
+              <p className="text-sm text-green-700">
+                API key configured via environment variable.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 space-y-2">
+              <p className="text-sm font-medium text-amber-800">
+                API Key Required
+              </p>
+              <p className="text-sm text-amber-700">
+                To enable AI features, add your Anthropic API key to <code className="bg-amber-100 px-1 rounded">.env.local</code>:
+              </p>
+              <pre className="bg-amber-100 p-2 rounded text-xs text-amber-900 overflow-x-auto">
+NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
+              </pre>
+              <p className="text-xs text-amber-600">
+                Then restart the development server.
+              </p>
+            </div>
+          )}
+
+          {/* Test result */}
+          {apiKeyTestResult && (
+            <div
+              className={`rounded-md p-3 text-sm ${
+                apiKeyTestResult.success
+                  ? "bg-green-50 text-green-700"
+                  : "bg-red-50 text-red-700"
+              }`}
+            >
+              {apiKeyTestResult.message}
+            </div>
+          )}
+
+          {/* Model Selection - only show when configured */}
+          {isAIConfigured && (
+            <>
+              <Select
+                label="AI Model"
+                value={modelPreference}
+                onChange={(e) => setModelPreference(e.target.value as AIModel)}
+                options={modelOptions}
+                helperText="Haiku is faster and cheaper, Sonnet is more capable"
+              />
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleTestApiKey}
+                isLoading={isTestingKey}
+              >
+                Test Connection
+              </Button>
+            </>
+          )}
+
+          <div className="rounded-md bg-blue-50 p-3">
+            <p className="text-xs text-blue-700">
+              <strong>Privacy:</strong> When you use AI features, your contribution descriptions
+              and contributor names are sent to Anthropic. No data is stored on external servers.
+            </p>
+          </div>
         </CardBody>
       </Card>
 
