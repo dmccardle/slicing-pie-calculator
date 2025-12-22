@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppShell } from "@/components/layout";
 import { AppProvider } from "@/context/AppContext";
 import { SlicingPieProvider } from "@/context/SlicingPieContext";
+import { FeatureFlagsProvider } from "@/context/FeatureFlagsContext";
 
 export const metadata: Metadata = {
   title: "Slicing Pie Calculator",
@@ -24,13 +25,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <AppProvider>
-          <SlicingPieProvider>
-            <AppShell appName="Slicing Pie" navItems={navItems}>
-              {children}
-            </AppShell>
-          </SlicingPieProvider>
-        </AppProvider>
+        <FeatureFlagsProvider>
+          <AppProvider>
+            <SlicingPieProvider>
+              <AppShell appName="Slicing Pie" navItems={navItems}>
+                {children}
+              </AppShell>
+            </SlicingPieProvider>
+          </AppProvider>
+        </FeatureFlagsProvider>
       </body>
     </html>
   );

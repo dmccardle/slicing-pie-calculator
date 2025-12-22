@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useSlicingPieContext } from "@/context/SlicingPieContext";
-import { Card, CardHeader, CardBody, CardFooter, Button, Input, Modal, Select } from "@/components/ui";
+import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
+import { Card, CardHeader, CardBody, CardFooter, Button, Input, Modal, Select, Toggle } from "@/components/ui";
 import { ExportPanel } from "@/components/export";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import { formatSlices, formatCurrency, formatEquityPercentage } from "@/utils/slicingPie";
@@ -70,6 +71,9 @@ export default function SettingsPage() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
+
+  // Feature Flags
+  const { vestingEnabled, setVestingEnabled } = useFeatureFlagsContext();
 
   // AI Settings
   const {
@@ -391,6 +395,47 @@ NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
               and contributor names are sent to Anthropic. No data is stored on external servers.
             </p>
           </div>
+        </CardBody>
+      </Card>
+
+      {/* Vesting Features */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Vesting Features</h2>
+            {vestingEnabled ? (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+                Enabled
+              </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                Disabled
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Enable cliff and vesting tracking to monitor when contributors&apos; equity becomes fully vested.
+            Configure start dates, cliff periods, and vesting schedules for each contributor.
+          </p>
+
+          <Toggle
+            id="vesting-toggle"
+            label="Enable Vesting Features"
+            checked={vestingEnabled}
+            onChange={setVestingEnabled}
+            helperText="When enabled, you can set vesting schedules for contributors and view future equity projections"
+          />
+
+          {vestingEnabled && (
+            <div className="rounded-md bg-blue-50 p-3">
+              <p className="text-sm text-blue-700">
+                <strong>Features enabled:</strong> Contributor vesting fields, vesting status badges,
+                and the Projections page for viewing future equity distribution.
+              </p>
+            </div>
+          )}
         </CardBody>
       </Card>
 

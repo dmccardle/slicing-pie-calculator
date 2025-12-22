@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/Form/Input";
 import { Select } from "@/components/ui/Form/Select";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Form/Checkbox";
-import type { Contributor, Contribution, ContributionType, Company } from "@/types/slicingPie";
+import type { Contributor, Contribution, ContributionType, Company, VestingConfig } from "@/types/slicingPie";
 import { CONTRIBUTION_TYPE_LABELS } from "@/types/slicingPie";
+import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import { calculateSlices, MULTIPLIERS, formatSlices, formatContributionValue, formatCurrency } from "@/utils/slicingPie";
 import { SuggestValueButton, AIChatModal } from "@/components/ai";
 import type { AISuggestion, ValuationContext } from "@/types/ai";
@@ -18,6 +19,7 @@ interface ContributorFormData {
   email: string;
   hourlyRate: number;
   active: boolean;
+  vesting?: VestingConfig;
 }
 
 interface QuickContributionData {
@@ -76,6 +78,10 @@ export function ContributorForm({
   const [contributionData, setContributionData] = useState<QuickContributionData>(INITIAL_CONTRIBUTION_DATA);
   const [showAIChat, setShowAIChat] = useState(false);
   const { isConfigured: isAIConfigured } = useAISettings();
+  const { vestingEnabled } = useFeatureFlagsContext();
+
+  // Vesting state
+  const [vestingData, setVestingData] = useState<VestingConfig | null>(null);
 
   const isEditing = !!contributor;
 
@@ -87,8 +93,11 @@ export function ContributorForm({
         hourlyRate: contributor.hourlyRate,
         active: contributor.active,
       });
+      // Load vesting data if exists
+      setVestingData(contributor.vesting || null);
     } else {
       setFormData(INITIAL_FORM_DATA);
+      setVestingData(null);
     }
     setErrors({});
     // Reset quick-add form when modal opens/closes
@@ -175,7 +184,12 @@ export function ContributorForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      // Include vesting data in submission
+      const dataToSubmit: ContributorFormData = {
+        ...formData,
+        vesting: vestingData || undefined,
+      };
+      onSubmit(dataToSubmit);
     }
   };
 
@@ -229,6 +243,120 @@ export function ContributorForm({
           checked={formData.active}
           onChange={(e) => handleChange("active", e.target.checked)}
         />
+
+        {/* Vesting Configuration - Only when vesting is enabled */}
+        {vestingEnabled && (
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-900">Vesting Schedule</h3>
+              {!vestingData && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setVestingData({
+                      startDate: new Date().toISOString().split("T")[0],
+                      cliffMonths: 12,
+                      vestingMonths: 48,
+                    })
+                  }
+                >
+                  + Add Vesting
+                </Button>
+              )}
+              {vestingData && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setVestingData(null)}
+                >
+                  Remove Vesting
+                </Button>
+              )}
+            </div>
+
+            {vestingData && (
+              <div className="space-y-3 rounded-lg bg-gray-50 p-4">
+                <Input
+                  label="Start Date"
+                  type="date"
+                  value={vestingData.startDate}
+                  onChange={(e) =>
+                    setVestingData((prev) =>
+                      prev ? { ...prev, startDate: e.target.value } : null
+                    )
+                  }
+                  helperText="When the contributor started (vesting begins from this date)"
+                />
+
+                <Input
+                  label="Cliff Period (months)"
+                  type="number"
+                  min="0"
+                  max="24"
+                  value={vestingData.cliffMonths}
+                  onChange={(e) =>
+                    setVestingData((prev) =>
+                      prev
+                        ? { ...prev, cliffMonths: parseInt(e.target.value) || 0 }
+                        : null
+                    )
+                  }
+                  helperText="Months before any equity vests (typically 12 months)"
+                />
+
+                <Input
+                  label="Vesting Period (months)"
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={vestingData.vestingMonths}
+                  onChange={(e) =>
+                    setVestingData((prev) =>
+                      prev
+                        ? { ...prev, vestingMonths: parseInt(e.target.value) || 12 }
+                        : null
+                    )
+                  }
+                  helperText="Total months for full vesting (typically 48 months / 4 years)"
+                />
+
+                {/* Vesting Preview */}
+                <div className="rounded-md bg-blue-50 p-3 text-sm">
+                  <p className="text-blue-700">
+                    <strong>Schedule:</strong> {vestingData.cliffMonths}-month cliff, then linear
+                    vesting over {vestingData.vestingMonths} months total
+                  </p>
+                  {vestingData.startDate && (
+                    <p className="text-blue-600 mt-1">
+                      Cliff ends:{" "}
+                      {new Date(
+                        new Date(vestingData.startDate).setMonth(
+                          new Date(vestingData.startDate).getMonth() + vestingData.cliffMonths
+                        )
+                      ).toLocaleDateString()}
+                      {" | "}
+                      Fully vested:{" "}
+                      {new Date(
+                        new Date(vestingData.startDate).setMonth(
+                          new Date(vestingData.startDate).getMonth() + vestingData.vestingMonths
+                        )
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!vestingData && (
+              <p className="text-xs text-gray-500">
+                No vesting schedule. Contributor is treated as 100% vested.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Quick Add Contribution Section - Only in edit mode */}
         {isEditing && onAddContribution && (

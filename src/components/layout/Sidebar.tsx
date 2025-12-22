@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { NavItem } from "@/types";
+import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +14,27 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
   const pathname = usePathname();
+  const { vestingEnabled } = useFeatureFlagsContext();
+
+  // Add Projections nav item when vesting is enabled
+  const allNavItems = useMemo(() => {
+    if (!vestingEnabled) return navItems;
+
+    // Insert Projections after Contributors (before Settings)
+    const settingsIndex = navItems.findIndex((item) => item.href === "/settings");
+    const projectionsItem: NavItem = { label: "Projections", href: "/projections" };
+
+    if (settingsIndex >= 0) {
+      return [
+        ...navItems.slice(0, settingsIndex),
+        projectionsItem,
+        ...navItems.slice(settingsIndex),
+      ];
+    }
+
+    // If no settings found, just append
+    return [...navItems, projectionsItem];
+  }, [navItems, vestingEnabled]);
 
   return (
     <>
@@ -38,7 +60,7 @@ export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
       >
         <nav className="flex h-full flex-col p-4">
           <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
+            {allNavItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <li key={item.href}>

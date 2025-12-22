@@ -2,7 +2,7 @@
  * Export utilities for JSON, Excel, and PDF
  */
 
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -70,38 +70,67 @@ export interface ExcelSheet {
 /**
  * Export data to Excel file with multiple sheets
  */
-export function exportToExcel(
+export async function exportToExcel(
   sheets: ExcelSheet[],
   filename: string = "export"
-): void {
-  const workbook = XLSX.utils.book_new();
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
 
   sheets.forEach((sheet) => {
-    // If columns are specified, order the data accordingly
-    let sheetData = sheet.data;
+    const worksheet = workbook.addWorksheet(sheet.name);
+
+    // Set up columns with headers
     if (sheet.columns && sheet.columns.length > 0) {
-      sheetData = sheet.data.map((row) => {
-        const orderedRow: Record<string, unknown> = {};
-        sheet.columns!.forEach((col) => {
-          orderedRow[col.header] = row[col.key];
-        });
-        return orderedRow;
-      });
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(sheetData);
-
-    // Set column widths if specified
-    if (sheet.columns) {
-      worksheet["!cols"] = sheet.columns.map((col) => ({
-        wch: col.width || 15,
+      worksheet.columns = sheet.columns.map((col) => ({
+        header: col.header,
+        key: col.key,
+        width: col.width || 15,
       }));
+
+      // Add data rows
+      sheet.data.forEach((row) => {
+        worksheet.addRow(row);
+      });
+    } else {
+      // No column config - use keys from first data row
+      if (sheet.data.length > 0) {
+        const keys = Object.keys(sheet.data[0]);
+        worksheet.columns = keys.map((key) => ({
+          header: key,
+          key: key,
+          width: 15,
+        }));
+        sheet.data.forEach((row) => {
+          worksheet.addRow(row);
+        });
+      }
     }
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF2563EB" },
+    };
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
   });
 
-  XLSX.writeFile(workbook, `${filename}.xlsx`);
+  // Generate buffer and trigger download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**

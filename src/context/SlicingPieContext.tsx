@@ -16,6 +16,12 @@ import {
   getMostRecentContribution,
 } from "@/utils/slicingPie";
 import {
+  getVestedEquityData,
+  getVestingSummary,
+  type VestedEquityDataItem,
+  type VestingSummary,
+} from "@/utils/vesting";
+import {
   SAMPLE_COMPANY,
   SAMPLE_CONTRIBUTORS,
   SAMPLE_CONTRIBUTIONS,
@@ -57,6 +63,10 @@ interface SlicingPieContextValue {
   // Computed values
   totalSlices: number;
   mostRecentContribution: Contribution | null;
+
+  // Vesting computed values
+  vestedEquityData: VestedEquityDataItem[];
+  vestingSummary: VestingSummary;
 
   // Data management
   loadSampleData: () => void;
@@ -185,6 +195,30 @@ export function SlicingPieProvider({
     return getMostRecentContribution(contributions as unknown as Contribution[]);
   }, [contributions]);
 
+  // Build contributor slices map for vesting calculations
+  const contributorSlicesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    contributorsWithEquity.forEach((c) => {
+      map.set(c.id, c.totalSlices);
+    });
+    return map;
+  }, [contributorsWithEquity]);
+
+  // Vesting computed values
+  const vestedEquityData = useMemo(() => {
+    return getVestedEquityData(
+      contributors as unknown as Contributor[],
+      contributorSlicesMap
+    );
+  }, [contributors, contributorSlicesMap]);
+
+  const vestingSummary = useMemo(() => {
+    return getVestingSummary(
+      contributors as unknown as Contributor[],
+      contributorSlicesMap
+    );
+  }, [contributors, contributorSlicesMap]);
+
   const hasData = contributors.length > 0 || contributions.length > 0;
 
   const hasSampleData = useMemo(() => {
@@ -254,6 +288,8 @@ export function SlicingPieProvider({
       ) => Contribution | undefined,
       totalSlices,
       mostRecentContribution,
+      vestedEquityData,
+      vestingSummary,
       loadSampleData,
       clearAllData,
       hasData,
@@ -276,6 +312,8 @@ export function SlicingPieProvider({
       getContributionById,
       totalSlices,
       mostRecentContribution,
+      vestedEquityData,
+      vestingSummary,
       loadSampleData,
       clearAllData,
       hasData,
