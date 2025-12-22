@@ -1,0 +1,286 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { useSlicingPieContext } from "@/context/SlicingPieContext";
+import { useSlicingPie } from "@/hooks/useSlicingPie";
+import { Card, CardHeader, CardBody } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { EquitySummary, OnboardingModal } from "@/components/slicing-pie";
+
+const ONBOARDING_DISMISSED_KEY = "slicingPie_onboardingDismissed";
+
+interface PieChartDataItem {
+  name: string;
+  value: number;
+  slices: number;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: PieChartDataItem;
+  }>;
+}
+
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  if (active && payload && payload.length > 0) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+        <p className="font-semibold text-gray-900">{data.name}</p>
+        <p className="text-sm text-gray-600">
+          Slices: {data.slices.toLocaleString()}
+        </p>
+        <p className="text-sm text-gray-600">
+          Equity: {data.value.toFixed(1)}%
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
+function EmptyState() {
+  return (
+    <Card>
+      <CardBody className="py-12 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+          <svg
+            className="h-8 w-8 text-blue-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+        </div>
+        <h3 className="mb-2 text-lg font-semibold text-gray-900">
+          No Contributors Yet
+        </h3>
+        <p className="mb-6 text-sm text-gray-600">
+          Start tracking equity by adding your first contributor and logging
+          their contributions.
+        </p>
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Link href="/contributors">
+            <Button variant="primary">Add Contributors</Button>
+          </Link>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              // Will be handled by OnboardingModal in Phase 8
+              window.dispatchEvent(new CustomEvent("loadSampleData"));
+            }}
+          >
+            Load Sample Data
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+export default function Dashboard() {
+  const {
+    contributors,
+    contributions,
+    isLoading,
+    hasData,
+    loadSampleData,
+  } = useSlicingPieContext();
+
+  const { pieChartData, summary } = useSlicingPie(contributors, contributions);
+
+  // First-time detection for onboarding modal
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Check if onboarding has been dismissed and there's no data
+    if (!isLoading && !hasData) {
+      const dismissed = localStorage.getItem(ONBOARDING_DISMISSED_KEY);
+      if (!dismissed) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isLoading, hasData]);
+
+  const handleDismissOnboarding = () => {
+    localStorage.setItem(ONBOARDING_DISMISSED_KEY, "true");
+    setShowOnboarding(false);
+  };
+
+  const handleLoadSampleData = () => {
+    loadSampleData();
+    handleDismissOnboarding();
+  };
+
+  // Listen for loadSampleData event from EmptyState
+  useEffect(() => {
+    const handleLoadSampleDataEvent = () => {
+      loadSampleData();
+    };
+    window.addEventListener("loadSampleData", handleLoadSampleDataEvent);
+    return () => {
+      window.removeEventListener("loadSampleData", handleLoadSampleDataEvent);
+    };
+  }, [loadSampleData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={handleDismissOnboarding}
+        onLoadSampleData={handleLoadSampleData}
+        onStartEmpty={handleDismissOnboarding}
+      />
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Equity Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Track and visualize equity distribution using the Slicing Pie model
+        </p>
+      </div>
+
+      {!hasData ? (
+        <EmptyState />
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <EquitySummary
+            totalSlices={summary.totalSlices}
+            contributorCount={summary.totalContributors}
+            activeContributors={summary.activeContributors}
+            contributionsThisMonth={summary.contributionsThisMonth}
+            recentActivityDate={
+              contributions.length > 0
+                ? [...contributions].sort(
+                    (a, b) =>
+                      new Date(b.date).getTime() - new Date(a.date).getTime()
+                  )[0]?.date
+                : undefined
+            }
+          />
+
+          {/* Equity Pie Chart */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Equity Distribution
+              </h2>
+            </CardHeader>
+            <CardBody>
+              {pieChartData.length > 0 ? (
+                <div style={{ height: 350 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPie>
+                      <Pie
+                        data={pieChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                        innerRadius={60}
+                        outerRadius={120}
+                        dataKey="value"
+                        nameKey="name"
+                      >
+                        {pieChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        formatter={(value) => (
+                          <span className="text-sm text-gray-700">{value}</span>
+                        )}
+                      />
+                    </RechartsPie>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-gray-500">
+                  <p>No contributions recorded yet.</p>
+                  <Link
+                    href="/contributions"
+                    className="mt-2 inline-block text-blue-600 hover:underline"
+                  >
+                    Log your first contribution
+                  </Link>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Contributor Breakdown */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Contributor Breakdown
+                </h2>
+                <Link href="/contributors">
+                  <Button variant="ghost" size="sm">
+                    View All
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <ul className="divide-y divide-gray-200">
+                {pieChartData.slice(0, 5).map((contributor) => (
+                  <li
+                    key={contributor.name}
+                    className="flex items-center justify-between py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: contributor.color }}
+                      />
+                      <span className="font-medium text-gray-900">
+                        {contributor.name}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        {contributor.value.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {contributor.slices.toLocaleString()} slices
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardBody>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}

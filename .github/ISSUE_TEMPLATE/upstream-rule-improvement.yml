@@ -1,0 +1,132 @@
+name: 💡 Upstream Rule Improvement
+description: Suggest improvement to a coding rule or documentation standard
+title: "[RULE] "
+labels: ["upstream-improvement", "documentation", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Suggesting Rule Improvements
+
+        Use this form to suggest improvements to **template rules** that would benefit all projects.
+
+        **Examples:**
+        - ✅ Rule improvement: "API versioning rule should allow /v1/ in middleware, not just routes"
+        - ✅ Rule improvement: "Git commit rules are too strict for quick fixes"
+        - ✅ Rule improvement: "Clean code guide recommends pattern that causes performance issues"
+        - ❌ Project-specific: "We should use MongoDB instead of PostgreSQL" (not template issue)
+
+  - type: dropdown
+    id: rule-category
+    attributes:
+      label: Rule Category
+      description: Which type of rule needs improvement?
+      options:
+        - API Design (docs/rules/api-design.md)
+        - UI Standards (docs/rules/ui-standards.md)
+        - Security & Privacy (docs/rules/security-privacy.md)
+        - Accessibility (docs/rules/accessibility.md)
+        - Clean Code (docs/rules/clean-code.md)
+        - Code Standards (docs/rules/code-standards.md)
+        - Git Workflow (docs/rules/git-workflow.md)
+        - Git Commits (docs/rules/git-commits.md)
+        - Semantic Versioning (docs/rules/semantic-versioning.md)
+        - Testing (docs/rules/testing.md)
+        - Environments (docs/rules/environments.md)
+        - Deployment (docs/rules/deployment.md)
+        - Technology Stack (docs/rules/technology-stack.md)
+        - SaaS Architecture (docs/09-saas-specific/saas-architecture.md)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-rule
+    attributes:
+      label: Current Rule (Problematic)
+      description: What does the rule say now?
+      placeholder: |
+        Example: "All API endpoints MUST be versioned with /api/v1/ prefix"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Why This Is Problematic
+      description: What's wrong with the current rule?
+      placeholder: |
+        Example: "This forces versioning in route paths, but middleware-based versioning is more flexible and easier to maintain. Current rule blocks legitimate architectural patterns."
+    validations:
+      required: true
+
+  - type: textarea
+    id: real-world-issue
+    attributes:
+      label: Real-World Issue Encountered
+      description: Describe when you hit this problem
+      placeholder: |
+        Example: "While implementing API gateway pattern, Claude Code rejected middleware-based versioning because it didn't match /api/v1/ in routes. Had to refactor entire API to satisfy rule, but middleware approach is industry standard."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-rule
+    attributes:
+      label: Proposed Rule (Improved)
+      description: How should the rule be updated?
+      placeholder: |
+        Example: "All API endpoints MUST be versioned, either via:
+        1. Route prefix: /api/v1/users
+        2. Middleware: Accept-Version header
+        3. Content negotiation: application/vnd.api+json;version=1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Benefits of Change
+      description: Why is your proposed rule better?
+      placeholder: |
+        - More flexible (supports multiple versioning strategies)
+        - Industry standard (follows REST best practices)
+        - Prevents over-engineering
+        - Easier to maintain
+    validations:
+      required: true
+
+  - type: textarea
+    id: breaking-change
+    attributes:
+      label: Is This a Breaking Change?
+      description: Would this require existing projects to update?
+      placeholder: |
+        - No: Just relaxes restrictions, existing code still valid
+        - Yes: Changes required behavior, existing code may need updates
+    validations:
+      required: true
+
+  - type: textarea
+    id: migration-path
+    attributes:
+      label: Migration Path (if breaking)
+      description: If breaking, how should existing projects update?
+      placeholder: |
+        Example: "Existing projects can keep /api/v1/ routes. New projects can choose middleware. Update docs to show both options."
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I've encountered this issue in real development
+          required: true
+        - label: This affects template rules (not project-specific preferences)
+          required: true
+        - label: I've explained why current rule is problematic
+          required: true
+        - label: I've proposed concrete improvement
+          required: true

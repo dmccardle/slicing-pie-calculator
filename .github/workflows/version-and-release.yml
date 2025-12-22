@@ -1,0 +1,206 @@
+name: Version and Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  version-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version bump
+        id: version
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_VERSION=${LATEST_TAG#v}
+
+          # Get commit messages since last tag
+          COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"%s" 2>/dev/null || git log --pretty=format:"%s")
+
+          # Determine bump type
+          BUMP_TYPE="patch"
+
+          if echo "$COMMITS" | grep -q "^feat!:"; then
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -q "^fix!:"; then
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -q "BREAKING CHANGE:"; then
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -q "^feat:"; then
+            BUMP_TYPE="minor"
+          elif echo "$COMMITS" | grep -q "^fix:"; then
+            BUMP_TYPE="patch"
+          fi
+
+          # Parse version
+          IFS='.' read -r -a VERSION_PARTS <<< "$LATEST_VERSION"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+
+          # Bump version
+          if [ "$BUMP_TYPE" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$BUMP_TYPE" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "old_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+          echo "Version bump: $LATEST_VERSION -> $NEW_VERSION ($BUMP_TYPE)"
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ steps.version.outputs.new_version }}" > VERSION
+          git add VERSION
+
+      - name: Update CHANGELOG.md
+        run: |
+          # Get commit messages since last tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --reverse 2>/dev/null || git log --pretty=format:"- %s (%h)" --reverse)
+
+          # Parse commits by type
+          FEATURES=$(echo "$COMMITS" | grep "^- feat:" || echo "")
+          FIXES=$(echo "$COMMITS" | grep "^- fix:" || echo "")
+          DOCS=$(echo "$COMMITS" | grep "^- docs:" || echo "")
+          REFACTOR=$(echo "$COMMITS" | grep "^- refactor:" || echo "")
+          CHORE=$(echo "$COMMITS" | grep "^- chore:" || echo "")
+          BREAKING=$(echo "$COMMITS" | grep -E "^- (feat!:|fix!:)" || echo "")
+
+          # Create temporary file with new entry
+          {
+            echo "## [${{ steps.version.outputs.new_version }}] - $(date +%Y-%m-%d)"
+            echo ""
+          } > /tmp/new_entry.md
+
+          if [ -n "$BREAKING" ]; then
+            echo "### ⚠️ BREAKING CHANGES" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+            echo "$BREAKING" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+          fi
+
+          if [ -n "$FEATURES" ]; then
+            echo "### Added" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+            echo "$FEATURES" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+          fi
+
+          if [ -n "$FIXES" ]; then
+            echo "### Fixed" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+            echo "$FIXES" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+          fi
+
+          if [ -n "$DOCS" ]; then
+            echo "### Documentation" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+            echo "$DOCS" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+          fi
+
+          if [ -n "$REFACTOR" ]; then
+            echo "### Changed" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+            echo "$REFACTOR" >> /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+          fi
+
+          # Insert new entry into CHANGELOG.md after the header
+          # Split CHANGELOG into header and body
+          awk '/^## \[/ {print_rest=1} !print_rest {print} print_rest {exit}' CHANGELOG.md > /tmp/changelog_header.md
+          awk '/^## \[/ {print_rest=1} print_rest' CHANGELOG.md > /tmp/changelog_body.md
+
+          # Reconstruct CHANGELOG with new entry
+          cat /tmp/changelog_header.md > CHANGELOG.md
+          cat /tmp/new_entry.md >> CHANGELOG.md
+          cat /tmp/changelog_body.md >> CHANGELOG.md
+
+          # Cleanup
+          rm /tmp/new_entry.md /tmp/changelog_header.md /tmp/changelog_body.md
+
+          git add CHANGELOG.md
+
+      - name: Commit version bump
+        id: commit
+        run: |
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "chore(release): bump version to ${{ steps.version.outputs.new_version }}" \
+              -m "Automated version bump based on conventional commits." \
+              -m "Type: ${{ steps.version.outputs.bump_type }}" \
+              -m "Previous version: ${{ steps.version.outputs.old_version }}" \
+              -m "New version: ${{ steps.version.outputs.new_version }}" \
+              -m "🤖 Automated release by GitHub Actions"
+
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Git tag
+        if: steps.commit.outputs.changes == 'true'
+        run: |
+          git tag -a "v${{ steps.version.outputs.new_version }}" \
+            -m "Release v${{ steps.version.outputs.new_version }}" \
+            -m "" \
+            -m "Automated release based on conventional commits." \
+            -m "" \
+            -m "See CHANGELOG.md for details."
+
+      - name: Push changes
+        if: steps.commit.outputs.changes == 'true'
+        run: |
+          git push origin main
+          git push origin "v${{ steps.version.outputs.new_version }}"
+
+      - name: Create GitHub Release
+        if: steps.commit.outputs.changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+
+            // Extract latest version section from changelog
+            const versionRegex = new RegExp(`## \\[${{ steps.version.outputs.new_version }}\\].*?(?=## \\[|$)`, 's');
+            const match = changelog.match(versionRegex);
+            const releaseNotes = match ? match[0] : 'See CHANGELOG.md for details.';
+
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: 'v${{ steps.version.outputs.new_version }}',
+              name: 'v${{ steps.version.outputs.new_version }}',
+              body: releaseNotes,
+              draft: false,
+              prerelease: false
+            });

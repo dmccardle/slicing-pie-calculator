@@ -1,0 +1,32 @@
+{
+  "name": "slicing-pie",
+  "version": "0.1.0",
+  "description": "Slicing Pie equity calculator - Track contributions and equity splits for startups",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^15.5.9",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2"
+  }
+}

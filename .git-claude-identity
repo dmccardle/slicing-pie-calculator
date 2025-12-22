@@ -1,0 +1,11 @@
+# Claude Code Git Identity
+# This file stores the git identity used when Claude Code makes commits
+
+CLAUDE_GIT_NAME="Claude Code Bot"
+CLAUDE_GIT_EMAIL="[CLAUDE_CODE_BOT_EMAIL]"
+GITHUB_ACCOUNT="[CLAUDE_CODE_BOT_ACCOUNT]"
+
+# Your original identity (for manual commits)
+YOUR_GIT_NAME="[DEVELOPER_NAME]"
+YOUR_GIT_EMAIL="[DEVELOPER_EMAIL]"
+GITHUB_ACCOUNT_PERSONAL="[DEVELOPER_GITHUB_ACCOUNT]"
