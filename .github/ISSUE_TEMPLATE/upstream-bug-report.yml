@@ -1,0 +1,143 @@
+name: 🐛 Upstream Bug Report (Template Issue)
+description: Report a bug in the template that affects all projects using it
+title: "[UPSTREAM] "
+labels: ["upstream-bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Reporting Template Bugs
+
+        Use this form to report bugs in the **template itself** that should be fixed upstream.
+
+        **Not sure if it's a template bug?**
+        - ✅ Template bug: "CLAUDE.md loads wrong file path"
+        - ✅ Template bug: "Monitoring docs recommend deprecated tool"
+        - ✅ Template bug: "Git commit rules conflict with each other"
+        - ❌ Project bug: "My API endpoint is broken" (not template issue)
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How bad is this bug?
+      options:
+        - Critical (Breaks Claude Code startup)
+        - High (Major documentation error)
+        - Medium (Confusing guidance)
+        - Low (Typo or minor issue)
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: What's wrong with the template?
+      placeholder: |
+        Example: "CLAUDE.md references docs/project/overview.md but the file is actually at docs/01-getting-started/overview.md after reorganization"
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-files
+    attributes:
+      label: Affected Template Files
+      description: Which template files have the bug?
+      placeholder: |
+        - CLAUDE.md (line 42)
+        - docs/06-operations/monitoring.md (section "Setup")
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact on Projects
+      description: How does this affect projects using the template?
+      placeholder: |
+        - Claude Code fails to start (can't find files)
+        - Developers follow wrong instructions
+        - CI/CD pipelines break
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current (Incorrect) Behavior
+      description: What happens now?
+      placeholder: "When I follow the docs, X happens..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected (Correct) Behavior
+      description: What should happen?
+      placeholder: "It should do Y instead..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this bug?
+      placeholder: |
+        1. Clone template
+        2. Follow setup instructions in docs/01-getting-started/setup.md
+        3. Run command X
+        4. See error Y
+    validations:
+      required: true
+
+  - type: input
+    id: template-version
+    attributes:
+      label: Template Version
+      description: Which version of the template are you using?
+      placeholder: "1.0.0 (check VERSION file or git tag)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Template Tier
+      description: Where did you encounter this bug?
+      options:
+        - Tier 1 (Base template - claude-code-docs-template)
+        - Tier 2 (Architecture template - saas-fullstack-template, etc.)
+        - Tier 3 (Actual project using template)
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-fix
+    attributes:
+      label: Proposed Fix (Optional)
+      description: Do you have a suggestion for how to fix this?
+      placeholder: |
+        Change line 42 in CLAUDE.md from:
+        `docs/project/overview.md`
+
+        To:
+        `docs/01-getting-started/overview.md`
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: This is a template bug (not a project-specific issue)
+          required: true
+        - label: I've checked this hasn't been reported already
+          required: true
+        - label: I've included reproduction steps
+          required: true
+        - label: I've identified which template files are affected
+          required: true

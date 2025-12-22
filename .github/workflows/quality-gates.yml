@@ -1,0 +1,176 @@
+name: Quality Gates
+
+# Run on all PRs and pushes to main
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  # Documentation Quality Checks
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Markdown Lint
+        uses: articulate/actions-markdownlint@v1
+        with:
+          config: .markdownlint.json
+          files: '**/*.md'
+          ignore: node_modules
+        continue-on-error: true # Don't fail build, just report
+
+      - name: Check for broken links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.markdown-link-check.json'
+        continue-on-error: true
+
+  # Check documentation structure
+  validate-structure:
+    name: Validate Documentation Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          echo "📋 Checking required documentation files..."
+
+          required_files=(
+            "CLAUDE.md"
+            "CHANGELOG.md"
+            "README.md"
+            "VERSION"
+            "docs/rules/api-design.md"
+            "docs/rules/ui-standards.md"
+            "docs/rules/security-privacy.md"
+            "docs/09-saas-specific/saas-architecture.md"
+            "docs/templates/README.md"
+          )
+
+          missing_files=()
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              missing_files+=("$file")
+              echo "❌ Missing: $file"
+            else
+              echo "✅ Found: $file"
+            fi
+          done
+
+          if [ ${#missing_files[@]} -gt 0 ]; then
+            echo ""
+            echo "::error::Missing required files: ${missing_files[*]}"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ All required files present"
+
+      - name: Check all docs have cross-references
+        run: |
+          echo "🔗 Checking for cross-reference footers..."
+
+          total_files=$(find docs -name "*.md" -type f ! -name ".sync-flow-diagram.md" | wc -l)
+          files_with_footers=$(find docs -name "*.md" -type f ! -name ".sync-flow-diagram.md" -exec grep -l "## Related Documentation" {} \; | wc -l)
+
+          echo "Total docs: $total_files"
+          echo "With footers: $files_with_footers"
+
+          if [ "$total_files" != "$files_with_footers" ]; then
+            echo "::warning::Not all documentation files have cross-reference footers ($files_with_footers/$total_files)"
+          else
+            echo "✅ All documentation files have cross-reference footers"
+          fi
+
+  # Validate templates are syntactically correct
+  validate-templates:
+    name: Validate Code Templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate TypeScript templates
+        run: |
+          echo "🔍 Validating TypeScript templates..."
+
+          # Install TypeScript
+          npm install -g typescript
+
+          # Check each .ts file
+          for file in docs/templates/*.ts docs/templates/*.tsx; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              # Basic syntax check (will report errors but not fail)
+              tsc --noEmit --skipLibCheck "$file" || echo "::warning::Template $file has syntax issues (expected for templates with placeholders)"
+            fi
+          done
+
+      - name: Validate SQL templates
+        run: |
+          echo "🔍 Validating SQL templates..."
+
+          for file in docs/templates/*.sql; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              # Basic SQL syntax check (look for common errors)
+              if grep -q "CREATE TABLE.*;" "$file"; then
+                echo "✅ $file has CREATE TABLE statements"
+              else
+                echo "::warning::$file might be missing CREATE TABLE statements"
+              fi
+            fi
+          done
+
+  # Version consistency check
+  version-consistency:
+    name: Version Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check VERSION file matches CHANGELOG
+        run: |
+          echo "📊 Checking version consistency..."
+
+          version=$(cat VERSION | tr -d '[:space:]')
+          changelog_version=$(grep -m 1 "^## \[" CHANGELOG.md | sed 's/## \[\(.*\)\].*/\1/')
+
+          echo "VERSION file: $version"
+          echo "CHANGELOG latest: $changelog_version"
+
+          if [ "$version" != "$changelog_version" ]; then
+            echo "::error::VERSION ($version) doesn't match CHANGELOG ($changelog_version)"
+            exit 1
+          fi
+
+          echo "✅ Version is consistent"
+
+  # All checks must pass
+  quality-gate-status:
+    name: Quality Gate Status
+    runs-on: ubuntu-latest
+    needs: [markdown-lint, validate-structure, validate-templates, version-consistency]
+    if: always()
+    steps:
+      - name: Check if all gates passed
+        run: |
+          if [ "${{ needs.markdown-lint.result }}" != "success" ] || \
+             [ "${{ needs.validate-structure.result }}" != "success" ] || \
+             [ "${{ needs.validate-templates.result }}" != "success" ] || \
+             [ "${{ needs.version-consistency.result }}" != "success" ]; then
+            echo "::error::One or more quality gates failed"
+            exit 1
+          fi
+
+          echo "✅ All quality gates passed!"
