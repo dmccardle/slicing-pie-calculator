@@ -27,6 +27,7 @@ export default function ContributionsPage() {
   const {
     contributors,
     contributions,
+    company,
     addContribution,
     getContributorById,
     isLoading,
@@ -296,6 +297,7 @@ export default function ContributionsPage() {
         onClose={handleFormClose}
         onSubmit={handleFormSubmit}
         contributors={contributors}
+        company={company}
         isSubmitting={isSubmitting}
       />
     </div>

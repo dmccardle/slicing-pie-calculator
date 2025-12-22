@@ -1,11 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Form/Input";
+import { Select } from "@/components/ui/Form/Select";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Form/Checkbox";
-import type { Contributor } from "@/types/slicingPie";
+import type { Contributor, Contribution, ContributionType, Company } from "@/types/slicingPie";
+import { CONTRIBUTION_TYPE_LABELS } from "@/types/slicingPie";
+import { calculateSlices, MULTIPLIERS, formatSlices, formatContributionValue, formatCurrency } from "@/utils/slicingPie";
+import { SuggestValueButton, AIChatModal } from "@/components/ai";
+import type { AISuggestion, ValuationContext } from "@/types/ai";
+import { useAISettings } from "@/hooks/useAISettings";
 
 interface ContributorFormData {
   name: string;
@@ -14,12 +20,22 @@ interface ContributorFormData {
   active: boolean;
 }
 
+interface QuickContributionData {
+  type: ContributionType;
+  value: number;
+  description: string;
+  date: string;
+}
+
 interface ContributorFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ContributorFormData) => void;
   contributor?: Contributor | null;
   isSubmitting?: boolean;
+  onAddContribution?: (data: QuickContributionData) => void;
+  recentContributions?: Contribution[];
+  company?: Company;
 }
 
 const INITIAL_FORM_DATA: ContributorFormData = {
@@ -29,15 +45,37 @@ const INITIAL_FORM_DATA: ContributorFormData = {
   active: true,
 };
 
+const INITIAL_CONTRIBUTION_DATA: QuickContributionData = {
+  type: "time",
+  value: 0,
+  description: "",
+  date: new Date().toISOString().split("T")[0],
+};
+
+const CONTRIBUTION_TYPE_OPTIONS = [
+  { value: "time", label: "Time (Unpaid)" },
+  { value: "cash", label: "Cash Investment" },
+  { value: "non-cash", label: "Non-Cash (Equipment)" },
+  { value: "idea", label: "Idea / IP" },
+  { value: "relationship", label: "Relationship / Sales" },
+];
+
 export function ContributorForm({
   isOpen,
   onClose,
   onSubmit,
   contributor,
   isSubmitting = false,
+  onAddContribution,
+  recentContributions = [],
+  company,
 }: ContributorFormProps) {
   const [formData, setFormData] = useState<ContributorFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<Partial<Record<keyof ContributorFormData, string>>>({});
+  const [isQuickAddExpanded, setIsQuickAddExpanded] = useState(false);
+  const [contributionData, setContributionData] = useState<QuickContributionData>(INITIAL_CONTRIBUTION_DATA);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const { isConfigured: isAIConfigured } = useAISettings();
 
   const isEditing = !!contributor;
 
@@ -53,7 +91,67 @@ export function ContributorForm({
       setFormData(INITIAL_FORM_DATA);
     }
     setErrors({});
+    // Reset quick-add form when modal opens/closes
+    setContributionData({
+      ...INITIAL_CONTRIBUTION_DATA,
+      date: new Date().toISOString().split("T")[0],
+    });
+    setIsQuickAddExpanded(false);
   }, [contributor, isOpen]);
+
+  // Calculate slice preview for quick-add
+  const slicePreview = useMemo(() => {
+    if (!contributionData.value || contributionData.value <= 0) {
+      return { slices: 0, multiplier: MULTIPLIERS[contributionData.type] };
+    }
+    // Use current form hourlyRate (even if not yet saved)
+    const hourlyRate = formData.hourlyRate;
+    const multiplier = MULTIPLIERS[contributionData.type];
+    const slices = calculateSlices(contributionData.type, contributionData.value, hourlyRate);
+    return { slices, multiplier };
+  }, [contributionData.type, contributionData.value, formData.hourlyRate]);
+
+  // Context for AI valuation in quick-add
+  const valuationContext: ValuationContext | null = useMemo(() => {
+    if (!contributor) return null;
+    return {
+      contributorName: formData.name || contributor.name,
+      contributorHourlyRate: formData.hourlyRate,
+      companyName: company?.name || "My Startup",
+      companyDescription: company?.description,
+    };
+  }, [contributor, formData.name, formData.hourlyRate, company]);
+
+  const handleAISuggestion = (suggestion: AISuggestion) => {
+    setContributionData((prev) => ({
+      ...prev,
+      type: suggestion.type,
+      value: suggestion.value,
+    }));
+  };
+
+  // Get value input label based on contribution type
+  const getValueLabel = (type: ContributionType): string => {
+    switch (type) {
+      case "time":
+        return "Hours Worked";
+      case "cash":
+      case "non-cash":
+        return "Amount ($)";
+      default:
+        return "Negotiated Value (Slices)";
+    }
+  };
+
+  const handleAddContribution = () => {
+    if (!onAddContribution || contributionData.value <= 0) return;
+    onAddContribution(contributionData);
+    // Reset form for next entry
+    setContributionData({
+      ...INITIAL_CONTRIBUTION_DATA,
+      date: new Date().toISOString().split("T")[0],
+    });
+  };
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof ContributorFormData, string>> = {};
@@ -132,6 +230,178 @@ export function ContributorForm({
           onChange={(e) => handleChange("active", e.target.checked)}
         />
 
+        {/* Quick Add Contribution Section - Only in edit mode */}
+        {isEditing && onAddContribution && (
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            {/* Collapsible Header */}
+            <button
+              type="button"
+              onClick={() => setIsQuickAddExpanded(!isQuickAddExpanded)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <span className="text-sm font-medium text-gray-900">
+                Quick Add Contribution
+              </span>
+              <svg
+                className={`h-5 w-5 text-gray-500 transition-transform ${
+                  isQuickAddExpanded ? "rotate-180" : ""
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+
+            {/* Collapsed summary */}
+            {!isQuickAddExpanded && recentContributions.length > 0 && (
+              <p className="mt-1 text-xs text-gray-500">
+                {recentContributions.length} recent contribution{recentContributions.length !== 1 ? "s" : ""}
+              </p>
+            )}
+
+            {/* Expanded Content */}
+            {isQuickAddExpanded && (
+              <div className="mt-4 space-y-4">
+                {/* Contribution Form */}
+                <div className="rounded-lg bg-gray-50 p-4 space-y-3">
+                  <Select
+                    label="Type"
+                    value={contributionData.type}
+                    onChange={(e) =>
+                      setContributionData((prev) => ({
+                        ...prev,
+                        type: e.target.value as ContributionType,
+                      }))
+                    }
+                    options={CONTRIBUTION_TYPE_OPTIONS}
+                  />
+
+                  <Input
+                    label={getValueLabel(contributionData.type)}
+                    type="number"
+                    min="0"
+                    step={contributionData.type === "time" ? "0.5" : "1"}
+                    placeholder="0"
+                    value={contributionData.value || ""}
+                    onChange={(e) =>
+                      setContributionData((prev) => ({
+                        ...prev,
+                        value: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                  />
+
+                  <Input
+                    label="Description (optional)"
+                    placeholder="Brief description"
+                    value={contributionData.description}
+                    onChange={(e) =>
+                      setContributionData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                  />
+
+                  <Input
+                    label="Date"
+                    type="date"
+                    value={contributionData.date}
+                    onChange={(e) =>
+                      setContributionData((prev) => ({
+                        ...prev,
+                        date: e.target.value,
+                      }))
+                    }
+                  />
+
+                  {/* Slice Preview */}
+                  <div className="rounded-md bg-blue-50 p-3">
+                    <p className="text-xs text-gray-600">Slice Preview</p>
+                    <p className="text-sm font-medium text-blue-700">
+                      {contributionData.type === "time" ? (
+                        <>
+                          {contributionData.value || 0} hrs × {formatCurrency(formData.hourlyRate)}/hr × {slicePreview.multiplier} ={" "}
+                          <span className="text-blue-900">{formatSlices(slicePreview.slices)} slices</span>
+                        </>
+                      ) : contributionData.type === "idea" || contributionData.type === "relationship" ? (
+                        <>
+                          {formatSlices(contributionData.value || 0)} slices (negotiated)
+                        </>
+                      ) : (
+                        <>
+                          {formatCurrency(contributionData.value || 0)} × {slicePreview.multiplier} ={" "}
+                          <span className="text-blue-900">{formatSlices(slicePreview.slices)} slices</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* AI Suggestion Tools */}
+                  {isAIConfigured && valuationContext && (
+                    <SuggestValueButton
+                      description={contributionData.description || `${contributionData.type} contribution`}
+                      context={valuationContext}
+                      onSuggestion={handleAISuggestion}
+                      onOpenChat={() => setShowAIChat(true)}
+                    />
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleAddContribution}
+                    disabled={contributionData.value <= 0}
+                  >
+                    + Add Contribution
+                  </Button>
+                </div>
+
+                {/* Recent Contributions */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                    Recent Contributions
+                  </h4>
+                  {recentContributions.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">No contributions yet</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {recentContributions.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between text-xs py-1 border-b border-gray-100 last:border-0"
+                        >
+                          <span className="text-gray-500">
+                            {new Date(c.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                          <span className="text-gray-700 capitalize">
+                            {CONTRIBUTION_TYPE_LABELS[c.type].split(" ")[0]}
+                          </span>
+                          <span className="text-gray-600">
+                            {formatContributionValue(c.type, c.value)}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            {formatSlices(c.slices)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -141,6 +411,17 @@ export function ContributorForm({
           </Button>
         </div>
       </form>
+
+      {/* AI Chat Modal for quick-add */}
+      {valuationContext && (
+        <AIChatModal
+          isOpen={showAIChat}
+          onClose={() => setShowAIChat(false)}
+          context={valuationContext}
+          onApplySuggestion={handleAISuggestion}
+          initialMessage={contributionData.description}
+        />
+      )}
     </Modal>
   );
 }

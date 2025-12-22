@@ -5,8 +5,11 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Form/Input";
 import { Select } from "@/components/ui/Form/Select";
 import { Button } from "@/components/ui/Button";
-import type { ContributionType, Contributor } from "@/types/slicingPie";
+import type { ContributionType, Contributor, Company } from "@/types/slicingPie";
 import { MULTIPLIERS, calculateSlices, formatSlices } from "@/utils/slicingPie";
+import { SuggestValueButton, AIChatModal } from "@/components/ai";
+import type { AISuggestion, ValuationContext } from "@/types/ai";
+import { useAISettings } from "@/hooks/useAISettings";
 
 interface ContributionFormData {
   contributorId: string;
@@ -21,6 +24,7 @@ interface ContributionFormProps {
   onClose: () => void;
   onSubmit: (data: ContributionFormData & { multiplier: number; slices: number }) => void;
   contributors: Contributor[];
+  company?: Company;
   isSubmitting?: boolean;
 }
 
@@ -45,10 +49,13 @@ export function ContributionForm({
   onClose,
   onSubmit,
   contributors,
+  company,
   isSubmitting = false,
 }: ContributionFormProps) {
   const [formData, setFormData] = useState<ContributionFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<Partial<Record<keyof ContributionFormData, string>>>({});
+  const [showAIChat, setShowAIChat] = useState(false);
+  const { isConfigured: isAIConfigured } = useAISettings();
 
   useEffect(() => {
     if (isOpen) {
@@ -76,6 +83,25 @@ export function ContributionForm({
     );
     return { slices, multiplier };
   }, [formData.type, formData.value, selectedContributor?.hourlyRate]);
+
+  // Context for AI valuation
+  const valuationContext: ValuationContext | null = useMemo(() => {
+    if (!selectedContributor) return null;
+    return {
+      contributorName: selectedContributor.name,
+      contributorHourlyRate: selectedContributor.hourlyRate,
+      companyName: company?.name || "My Startup",
+      companyDescription: company?.description,
+    };
+  }, [selectedContributor, company]);
+
+  const handleAISuggestion = (suggestion: AISuggestion) => {
+    setFormData((prev) => ({
+      ...prev,
+      type: suggestion.type,
+      value: suggestion.value,
+    }));
+  };
 
   const getValueLabel = () => {
     switch (formData.type) {
@@ -222,6 +248,17 @@ export function ContributionForm({
           helperText="Optional - helps track contribution details"
         />
 
+        {/* AI Suggestion Tools */}
+        {isAIConfigured && valuationContext && (
+          <SuggestValueButton
+            description={formData.description || `${formData.type} contribution`}
+            context={valuationContext}
+            onSuggestion={handleAISuggestion}
+            onOpenChat={() => setShowAIChat(true)}
+            disabled={!selectedContributor}
+          />
+        )}
+
         <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -231,6 +268,17 @@ export function ContributionForm({
           </Button>
         </div>
       </form>
+
+      {/* AI Chat Modal */}
+      {valuationContext && (
+        <AIChatModal
+          isOpen={showAIChat}
+          onClose={() => setShowAIChat(false)}
+          context={valuationContext}
+          onApplySuggestion={handleAISuggestion}
+          initialMessage={formData.description}
+        />
+      )}
     </Modal>
   );
 }
