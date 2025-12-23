@@ -14,15 +14,15 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
   const pathname = usePathname();
-  const { vestingEnabled, valuationEnabled } = useFeatureFlagsContext();
+  const { vestingActive, valuationActive } = useFeatureFlagsContext();
 
-  // Add conditional nav items based on feature flags
+  // Add conditional nav items based on feature flags (both available AND enabled)
   const allNavItems = useMemo(() => {
     let items = [...navItems];
     const settingsIndex = items.findIndex((item) => item.href === "/settings");
 
-    // Add Projections when vesting is enabled
-    if (vestingEnabled) {
+    // Add Projections when vesting is active (available AND enabled)
+    if (vestingActive) {
       const projectionsItem: NavItem = { label: "Projections", href: "/projections" };
       if (settingsIndex >= 0) {
         items = [
@@ -35,8 +35,8 @@ export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
       }
     }
 
-    // Add Equity Values when valuation is enabled
-    if (valuationEnabled) {
+    // Add Equity Values when valuation is active (available AND enabled)
+    if (valuationActive) {
       const equityValuesItem: NavItem = { label: "Equity Values", href: "/equity-values" };
       // Find settings index again after possible insertion
       const newSettingsIndex = items.findIndex((item) => item.href === "/settings");
@@ -52,7 +52,7 @@ export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
     }
 
     return items;
-  }, [navItems, vestingEnabled, valuationEnabled]);
+  }, [navItems, vestingActive, valuationActive]);
 
   return (
     <>

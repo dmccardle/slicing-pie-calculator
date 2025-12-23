@@ -3,74 +3,85 @@
 import { useLocalStorage } from "./useLocalStorage";
 
 /**
- * Feature flags configuration
+ * User preferences for enabled features (stored in localStorage)
  */
-export interface FeatureFlags {
+export interface FeaturePreferences {
   vestingEnabled: boolean;
   valuationEnabled: boolean;
 }
 
-const FEATURE_FLAGS_KEY = "slicingPie_featureFlags";
+const FEATURE_PREFERENCES_KEY = "slicingPie_featurePreferences";
 
-/**
- * Get default value for vesting enabled from environment variable
- * Falls back to false if not set
- */
-function getDefaultVestingEnabled(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const envValue = process.env.NEXT_PUBLIC_VESTING_ENABLED;
-  return envValue === "true";
-}
-
-/**
- * Get default value for valuation enabled from environment variable
- * Falls back to false if not set
- */
-function getDefaultValuationEnabled(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const envValue = process.env.NEXT_PUBLIC_VALUATION_ENABLED;
-  return envValue === "true";
-}
-
-const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
-  vestingEnabled: false, // Will be overridden by env var check
-  valuationEnabled: false, // Will be overridden by env var check
+const DEFAULT_PREFERENCES: FeaturePreferences = {
+  vestingEnabled: true, // Default to enabled if feature is available
+  valuationEnabled: true, // Default to enabled if feature is available
 };
 
 /**
- * Hook for managing feature flags with localStorage persistence
- * Environment variable takes precedence for initial default value
+ * Check if vesting feature is available in this tier/deployment
+ * Controlled by environment variable - user cannot override this
+ * Note: NEXT_PUBLIC_* env vars are inlined at build time and available on both server and client
+ */
+function isVestingAvailable(): boolean {
+  return process.env.NEXT_PUBLIC_FEATURE_VESTING === "true";
+}
+
+/**
+ * Check if valuation feature is available in this tier/deployment
+ * Controlled by environment variable - user cannot override this
+ * Note: NEXT_PUBLIC_* env vars are inlined at build time and available on both server and client
+ */
+function isValuationAvailable(): boolean {
+  return process.env.NEXT_PUBLIC_FEATURE_VALUATION === "true";
+}
+
+/**
+ * Hook for managing feature flags with proper separation of concerns:
+ *
+ * - *Available: Is the feature available in this tier? (env var controlled, user cannot change)
+ * - *Enabled: Has the user enabled this feature? (localStorage, user preference)
+ *
+ * For UI logic:
+ * - Show toggle card only if feature is Available
+ * - Show feature UI only if Available AND Enabled
  */
 export function useFeatureFlags() {
-  // Get initial value considering env vars
-  const initialFlags: FeatureFlags = {
-    ...DEFAULT_FEATURE_FLAGS,
-    vestingEnabled: getDefaultVestingEnabled(),
-    valuationEnabled: getDefaultValuationEnabled(),
-  };
+  // Feature availability (tier-controlled, read-only)
+  const vestingAvailable = isVestingAvailable();
+  const valuationAvailable = isValuationAvailable();
 
-  const [flags, setFlags, { isLoading }] = useLocalStorage<FeatureFlags>(
-    FEATURE_FLAGS_KEY,
-    initialFlags
+  // User preferences (localStorage)
+  const [preferences, setPreferences, { isLoading }] = useLocalStorage<FeaturePreferences>(
+    FEATURE_PREFERENCES_KEY,
+    DEFAULT_PREFERENCES
   );
 
+  // Setters for user preferences
   const setVestingEnabled = (enabled: boolean) => {
-    setFlags((prev) => ({ ...prev, vestingEnabled: enabled }));
+    setPreferences((prev) => ({ ...prev, vestingEnabled: enabled }));
   };
 
   const setValuationEnabled = (enabled: boolean) => {
-    setFlags((prev) => ({ ...prev, valuationEnabled: enabled }));
+    setPreferences((prev) => ({ ...prev, valuationEnabled: enabled }));
   };
 
   return {
-    vestingEnabled: flags.vestingEnabled,
+    // Feature availability (tier-controlled)
+    vestingAvailable,
+    valuationAvailable,
+
+    // User preferences (only meaningful if feature is available)
+    vestingEnabled: preferences.vestingEnabled,
+    valuationEnabled: preferences.valuationEnabled,
+
+    // Convenience: is the feature both available AND enabled?
+    vestingActive: vestingAvailable && preferences.vestingEnabled,
+    valuationActive: valuationAvailable && preferences.valuationEnabled,
+
+    // Setters
     setVestingEnabled,
-    valuationEnabled: flags.valuationEnabled,
     setValuationEnabled,
+
     isLoading,
   };
 }
