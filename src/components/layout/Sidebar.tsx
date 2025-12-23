@@ -14,27 +14,45 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
   const pathname = usePathname();
-  const { vestingEnabled } = useFeatureFlagsContext();
+  const { vestingEnabled, valuationEnabled } = useFeatureFlagsContext();
 
-  // Add Projections nav item when vesting is enabled
+  // Add conditional nav items based on feature flags
   const allNavItems = useMemo(() => {
-    if (!vestingEnabled) return navItems;
+    let items = [...navItems];
+    const settingsIndex = items.findIndex((item) => item.href === "/settings");
 
-    // Insert Projections after Contributors (before Settings)
-    const settingsIndex = navItems.findIndex((item) => item.href === "/settings");
-    const projectionsItem: NavItem = { label: "Projections", href: "/projections" };
-
-    if (settingsIndex >= 0) {
-      return [
-        ...navItems.slice(0, settingsIndex),
-        projectionsItem,
-        ...navItems.slice(settingsIndex),
-      ];
+    // Add Projections when vesting is enabled
+    if (vestingEnabled) {
+      const projectionsItem: NavItem = { label: "Projections", href: "/projections" };
+      if (settingsIndex >= 0) {
+        items = [
+          ...items.slice(0, settingsIndex),
+          projectionsItem,
+          ...items.slice(settingsIndex),
+        ];
+      } else {
+        items = [...items, projectionsItem];
+      }
     }
 
-    // If no settings found, just append
-    return [...navItems, projectionsItem];
-  }, [navItems, vestingEnabled]);
+    // Add Equity Values when valuation is enabled
+    if (valuationEnabled) {
+      const equityValuesItem: NavItem = { label: "Equity Values", href: "/equity-values" };
+      // Find settings index again after possible insertion
+      const newSettingsIndex = items.findIndex((item) => item.href === "/settings");
+      if (newSettingsIndex >= 0) {
+        items = [
+          ...items.slice(0, newSettingsIndex),
+          equityValuesItem,
+          ...items.slice(newSettingsIndex),
+        ];
+      } else {
+        items = [...items, equityValuesItem];
+      }
+    }
+
+    return items;
+  }, [navItems, vestingEnabled, valuationEnabled]);
 
   return (
     <>
