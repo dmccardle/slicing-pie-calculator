@@ -119,7 +119,7 @@ export function OnboardingModal({
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 text-blue-600">2.</span>
-              Log contributions (time, cash, non-cash, ideas)
+              Log contributions (time, cash, non-cash, ideas, relationships)
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 text-blue-600">3.</span>
