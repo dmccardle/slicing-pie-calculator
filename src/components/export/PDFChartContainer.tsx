@@ -11,6 +11,7 @@ import {
   PieChart as RechartsPie,
   Pie,
   Cell,
+  Customized,
 } from "recharts";
 import { CHART_COLORS } from "@/components/charts/PieChart";
 import type { ChartDataPoint } from "@/types";
@@ -124,15 +125,12 @@ function resolveCollisions(labels: LabelPosition[]): LabelPosition[] {
 }
 
 /**
- * Custom SVG labels with collision avoidance
+ * Render custom SVG labels with collision avoidance
+ * Used inside Recharts Customized component
  */
-function CustomLabels({
-  labels,
-}: {
-  labels: LabelPosition[];
-}) {
+function renderCustomLabels(labels: LabelPosition[]): React.ReactNode {
   return (
-    <g>
+    <g className="custom-labels">
       {labels.map((label, index) => {
         const percentText = `${(label.percent * 100).toFixed(1)}%`;
         const maxLen = 14;
@@ -251,6 +249,8 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
               outerRadius={outerRadius}
               dataKey="value"
               nameKey="name"
+              startAngle={90}
+              endAngle={-270}
               labelLine={false}
               label={false}
             >
@@ -261,8 +261,8 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
                 />
               ))}
             </Pie>
-            {/* Custom labels with collision avoidance */}
-            <CustomLabels labels={labelPositions} />
+            {/* Custom labels with collision avoidance - must use Customized to inject into SVG */}
+            <Customized component={() => renderCustomLabels(labelPositions)} />
           </RechartsPie>
         </div>
       </div>

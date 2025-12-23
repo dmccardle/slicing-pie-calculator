@@ -234,8 +234,41 @@ export interface EnhancedPDFOptions {
 const PAGE_WIDTH = 210; // A4 width in mm
 const PAGE_HEIGHT = 297; // A4 height in mm
 const MARGIN_LEFT = 14;
+const MARGIN_RIGHT = 14;
 const MARGIN_TOP = 20;
 const MARGIN_BOTTOM = 20;
+const FOOTER_Y = PAGE_HEIGHT - 10; // 10mm from bottom
+
+/**
+ * Add footers to all pages of the PDF
+ * Footer layout: Document Name (left) | Date (center) | Page X of Y (right)
+ */
+function addFooters(doc: jsPDF, documentName: string, generationDate: string): void {
+  const totalPages = doc.getNumberOfPages();
+
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(128); // Gray color
+
+    // Left: Document name
+    doc.text(documentName, MARGIN_LEFT, FOOTER_Y);
+
+    // Center: Generation date
+    const dateText = generationDate;
+    const dateWidth = doc.getTextWidth(dateText);
+    doc.text(dateText, (PAGE_WIDTH - dateWidth) / 2, FOOTER_Y);
+
+    // Right: Page X of Y
+    const pageText = `Page ${i} of ${totalPages}`;
+    const pageWidth = doc.getTextWidth(pageText);
+    doc.text(pageText, PAGE_WIDTH - MARGIN_RIGHT - pageWidth, FOOTER_Y);
+  }
+
+  // Reset text color
+  doc.setTextColor(0);
+}
 
 /**
  * Check if content fits on current page, add new page if needed
@@ -527,6 +560,15 @@ export async function exportEnhancedPDF(
       },
     });
   }
+
+  // ========== SECTION 6: Add Footers to All Pages ==========
+  const documentName = `${data.companyName} - Equity Report`;
+  const footerDate = new Date(data.exportDate).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  addFooters(doc, documentName, footerDate);
 
   // Save the PDF
   doc.save(`${filename}.pdf`);
