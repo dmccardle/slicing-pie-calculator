@@ -62,22 +62,6 @@ export function ImportConfirmModal({
           </div>
         )}
 
-        {hasExistingData && onExportCurrent && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-            <p className="text-sm text-blue-700 mb-2">
-              You have existing data that will be replaced.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onExportCurrent}
-            >
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Download current data first
-            </Button>
-          </div>
-        )}
-
         <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-amber-200 bg-amber-50 p-3">
           <input
             type="checkbox"
@@ -89,6 +73,18 @@ export function ImportConfirmModal({
             I understand this will permanently replace all my current data
           </span>
         </label>
+
+        {hasExistingData && onExportCurrent && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onExportCurrent}
+            className="w-full"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            Export current data before importing
+          </Button>
+        )}
 
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={handleClose}>
