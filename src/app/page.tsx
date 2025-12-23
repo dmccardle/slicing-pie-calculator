@@ -13,12 +13,17 @@ import {
 import { useSlicingPieContext } from "@/context/SlicingPieContext";
 import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import { useSlicingPie } from "@/hooks/useSlicingPie";
+import { useValuation } from "@/hooks/useValuation";
+import { usePDFExport } from "@/hooks/usePDFExport";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { PDFChartContainer, PDFExportOptions } from "@/components/export";
 import { EquitySummary, OnboardingModal, LocalStorageBanner } from "@/components/slicing-pie";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
+import type { PDFExportOptions as PDFExportOptionsType, ChartDataPoint } from "@/types";
+import { CHART_COLORS } from "@/components/charts/PieChart";
 import { formatSlices } from "@/utils/slicingPie";
-import { ChartPieIcon, UserPlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { ChartPieIcon, UserPlusIcon, SparklesIcon, DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
 const ONBOARDING_DISMISSED_KEY = "slicingPie_onboardingDismissed";
 
@@ -158,6 +163,56 @@ export default function Dashboard() {
 
   const { vestingEnabled } = useFeatureFlagsContext();
   const { pieChartData, summary } = useSlicingPie(contributors, contributions);
+  const { config: valuationConfig } = useValuation();
+
+  // PDF Export state and hook
+  const [showPDFOptions, setShowPDFOptions] = useState(false);
+  const [pdfOptions, setPdfOptions] = useState<PDFExportOptionsType>({
+    includeContributionsBreakdown: true,
+    includeValuation: false,
+    includeVesting: false,
+  });
+
+  const {
+    status: pdfStatus,
+    error: pdfError,
+    progress: pdfProgress,
+    exportPDF,
+    chartRef,
+  } = usePDFExport(
+    company,
+    contributors,
+    contributions,
+    valuationConfig ? { mode: valuationConfig.mode, manualValue: valuationConfig.manualValue } : null
+  );
+
+  // Calculate chart data for PDF export
+  const pdfChartData: ChartDataPoint[] = useMemo(() => {
+    const activeContributions = contributions.filter((c) => !c.deletedAt);
+    const contributorSlices = new Map<string, number>();
+
+    activeContributions.forEach((c) => {
+      const current = contributorSlices.get(c.contributorId) || 0;
+      contributorSlices.set(c.contributorId, current + c.slices);
+    });
+
+    return contributors
+      .filter((c) => !c.deletedAt && (contributorSlices.get(c.id) || 0) > 0)
+      .map((contributor, index) => ({
+        name: contributor.name,
+        value: contributorSlices.get(contributor.id) || 0,
+        color: CHART_COLORS[index % CHART_COLORS.length],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [contributors, contributions]);
+
+  const hasValuation = valuationConfig?.manualValue != null && valuationConfig.manualValue > 0;
+  const isPDFExporting = pdfStatus === "preparing" || pdfStatus === "rendering";
+
+  const handlePDFExport = () => {
+    exportPDF(pdfOptions);
+    setShowPDFOptions(false);
+  };
 
   // Build vesting-aware pie chart data when vesting is enabled
   const vestingPieChartData = useMemo(() => {
@@ -275,14 +330,63 @@ export default function Dashboard() {
         onImport={handleImport}
       />
 
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <ChartPieIcon className="h-7 w-7 text-blue-600" />
-          Equity Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Track and visualize equity distribution using the Slicing Pie model
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <ChartPieIcon className="h-7 w-7 text-blue-600" />
+            Equity Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Track and visualize equity distribution using the Slicing Pie model
+          </p>
+        </div>
+
+        {/* PDF Export Button */}
+        {hasData && (
+          <div className="relative">
+            <Button
+              variant="secondary"
+              onClick={() => setShowPDFOptions(!showPDFOptions)}
+              disabled={isPDFExporting || pdfChartData.length === 0}
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              {isPDFExporting
+                ? `Exporting... ${pdfProgress}%`
+                : "Export PDF"}
+            </Button>
+
+            {/* PDF Options Dropdown */}
+            {showPDFOptions && !isPDFExporting && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                <PDFExportOptions
+                  options={pdfOptions}
+                  onChange={setPdfOptions}
+                  valuationAvailable={hasValuation}
+                  vestingEnabled={vestingEnabled}
+                />
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePDFExport}
+                  >
+                    Generate PDF
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPDFOptions(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                {pdfError && (
+                  <p className="mt-2 text-sm text-red-600">{pdfError}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {!hasData ? (
@@ -464,6 +568,9 @@ export default function Dashboard() {
           </Card>
         </>
       )}
+
+      {/* Hidden chart container for PDF export */}
+      <PDFChartContainer ref={chartRef} data={pdfChartData} />
     </div>
   );
 }
