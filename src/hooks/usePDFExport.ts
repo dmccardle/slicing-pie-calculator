@@ -114,10 +114,10 @@ export function usePDFExport(
 
             if (cancelledRef.current) return;
 
-            // Render chart to image (500x350 - pie with labels on all sides)
+            // Render chart to image (550x400 - pie with collision-avoided labels)
             chartImage = await renderChartToImage(chartRef.current, {
-              width: 500,
-              height: 350,
+              width: 550,
+              height: 400,
               scale: 2,
             });
             setProgress(50);
