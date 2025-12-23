@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useSlicingPieContext } from "@/context/SlicingPieContext";
 import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
+import { Toggle } from "@/components/ui/Form/Toggle";
 import { DateSelector } from "@/components/projections/DateSelector";
 import { ProjectionChart } from "@/components/projections/ProjectionChart";
 import { VestingProgress } from "@/components/slicing-pie/VestingProgress";
@@ -37,6 +38,9 @@ export default function ProjectionsPage() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+
+  // Toggle for showing unvested portions
+  const [showUnvested, setShowUnvested] = useState(false);
 
   // Build contributor slices map
   const contributorSlicesMap = useMemo(() => {
@@ -100,10 +104,19 @@ export default function ProjectionsPage() {
         </p>
       </div>
 
-      {/* Date Selector */}
+      {/* Date Selector & Options */}
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold text-gray-900">Projection Date</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Projection Date</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Show unvested</span>
+              <Toggle
+                checked={showUnvested}
+                onChange={setShowUnvested}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardBody>
           <DateSelector
@@ -114,40 +127,57 @@ export default function ProjectionsPage() {
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={`grid gap-4 ${showUnvested ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"}`}>
         <Card>
           <CardBody className="text-center">
-            <p className="text-xs text-gray-500">Total Vested</p>
+            <p className="text-xs text-gray-500">
+              {showUnvested ? "Vested Slices" : "Total Slices"}
+            </p>
             <p className="mt-1 text-xl font-bold text-green-600">
-              {formatSlices(summary.totalVestedSlices)}
+              {formatSlices(showUnvested ? summary.totalVestedSlices : summary.totalVestedSlices)}
             </p>
             <p className="text-xs text-gray-400">slices</p>
           </CardBody>
         </Card>
+        {showUnvested && (
+          <Card>
+            <CardBody className="text-center">
+              <p className="text-xs text-gray-500">Unvested Slices</p>
+              <p className="mt-1 text-xl font-bold text-amber-600">
+                {formatSlices(summary.totalUnvestedSlices)}
+              </p>
+              <p className="text-xs text-gray-400">slices</p>
+            </CardBody>
+          </Card>
+        )}
         <Card>
           <CardBody className="text-center">
-            <p className="text-xs text-gray-500">Total Unvested</p>
-            <p className="mt-1 text-xl font-bold text-amber-600">
-              {formatSlices(summary.totalUnvestedSlices)}
+            <p className="text-xs text-gray-500">
+              {showUnvested ? "Percent Vested" : "Contributors"}
             </p>
-            <p className="text-xs text-gray-400">slices</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="text-center">
-            <p className="text-xs text-gray-500">Overall Vested</p>
-            <p className="mt-1 text-xl font-bold text-blue-600">
-              {formatEquityPercentage(summary.overallPercentVested)}
-            </p>
+            {showUnvested ? (
+              <p className="mt-1 text-xl font-bold text-blue-600">
+                {formatEquityPercentage(summary.overallPercentVested)}
+              </p>
+            ) : (
+              <p className="mt-1 text-xl font-bold text-blue-600">
+                {projectedData.filter(d => d.vestedSlices > 0).length}
+              </p>
+            )}
+            {!showUnvested && (
+              <p className="text-xs text-gray-400">with vested equity</p>
+            )}
           </CardBody>
         </Card>
         <Card>
           <CardBody className="text-center">
             <p className="text-xs text-gray-500">Status</p>
             <div className="mt-1 flex justify-center gap-1 flex-wrap">
-              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
-                {summary.contributorsPreCliff} pre-cliff
-              </span>
+              {showUnvested && (
+                <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                  {summary.contributorsPreCliff} pre-cliff
+                </span>
+              )}
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
                 {summary.contributorsVesting} vesting
               </span>
@@ -198,7 +228,7 @@ export default function ProjectionsPage() {
               No contributors with equity. Add contributors and contributions to see projections.
             </p>
           ) : (
-            <ProjectionChart data={projectedData} showUnvested={true} />
+            <ProjectionChart data={projectedData} showUnvested={showUnvested} />
           )}
         </CardBody>
       </Card>
@@ -207,7 +237,7 @@ export default function ProjectionsPage() {
       <Card>
         <CardHeader>
           <h2 className="text-lg font-semibold text-gray-900">
-            Contributor Vesting Status
+            {showUnvested ? "Contributor Vesting Status" : "Vested Equity by Contributor"}
           </h2>
         </CardHeader>
         <CardBody>
@@ -215,48 +245,71 @@ export default function ProjectionsPage() {
             <p className="text-center text-gray-500 py-6">No contributors to display.</p>
           ) : (
             <div className="space-y-4">
-              {projectedData.map((item) => {
-                const contributor = contributors.find((c) => c.id === item.contributorId);
-                const vestingStatus = contributor
-                  ? calculateVestingStatus(contributor, item.totalSlices, selectedDate)
-                  : null;
+              {projectedData
+                .filter((item) => showUnvested || item.vestedSlices > 0)
+                .map((item) => {
+                  const contributor = contributors.find((c) => c.id === item.contributorId);
+                  const vestingStatus = contributor
+                    ? calculateVestingStatus(contributor, item.totalSlices, selectedDate)
+                    : null;
 
-                return (
-                  <div
-                    key={item.contributorId}
-                    className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border border-gray-200"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900">
-                          {item.contributorName}
-                        </h3>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            VESTING_STATE_COLORS[item.vestingState]
-                          }`}
-                        >
-                          {VESTING_STATE_LABELS[item.vestingState]}
-                        </span>
+                  // Calculate equity % based on vested slices only when not showing unvested
+                  const totalVestedSlices = summary.totalVestedSlices;
+                  const vestedEquityPercent = totalVestedSlices > 0
+                    ? (item.vestedSlices / totalVestedSlices) * 100
+                    : 0;
+
+                  return (
+                    <div
+                      key={item.contributorId}
+                      className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-gray-900">
+                            {item.contributorName}
+                          </h3>
+                          {showUnvested && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                VESTING_STATE_COLORS[item.vestingState]
+                              }`}
+                            >
+                              {VESTING_STATE_LABELS[item.vestingState]}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {showUnvested
+                            ? `${formatSlices(item.vestedSlices)} vested / ${formatSlices(item.totalSlices)} total`
+                            : `${formatSlices(item.vestedSlices)} slices`}
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {formatSlices(item.vestedSlices)} vested / {formatSlices(item.totalSlices)} total
-                      </p>
-                    </div>
-                    <div className="w-full md:w-48">
-                      {vestingStatus && (
-                        <VestingProgress vestingStatus={vestingStatus} size="sm" />
+                      {showUnvested && (
+                        <div className="w-full md:w-48">
+                          {vestingStatus && (
+                            <VestingProgress vestingStatus={vestingStatus} size="sm" />
+                          )}
+                        </div>
                       )}
+                      <div className="text-right">
+                        <p className="text-lg font-semibold text-gray-900">
+                          {showUnvested
+                            ? formatEquityPercentage(item.percentVested)
+                            : formatEquityPercentage(vestedEquityPercent)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {showUnvested ? "vested" : "of vested pie"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-gray-900">
-                        {formatEquityPercentage(item.percentVested)}
-                      </p>
-                      <p className="text-xs text-gray-500">vested</p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              {!showUnvested && projectedData.filter(d => d.vestedSlices === 0).length > 0 && (
+                <p className="text-center text-sm text-gray-400 pt-2">
+                  {projectedData.filter(d => d.vestedSlices === 0).length} contributor(s) with no vested equity hidden
+                </p>
+              )}
             </div>
           )}
         </CardBody>

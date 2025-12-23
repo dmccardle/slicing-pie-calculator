@@ -59,12 +59,14 @@ export function ProjectionChart({ data, showUnvested = true }: ProjectionChartPr
         }
         return result;
       })
-    : data.map((item, index) => ({
-        name: item.contributorName,
-        value: item.totalSlices,
-        color: COLORS[index % COLORS.length],
-        isVested: true,
-      }));
+    : data
+        .filter((item) => item.vestedSlices > 0)
+        .map((item, index) => ({
+          name: item.contributorName,
+          value: item.vestedSlices,
+          color: COLORS[index % COLORS.length],
+          isVested: true,
+        }));
 
   // Filter out zero-value entries
   const filteredData = chartData.filter((item) => item.value > 0);
