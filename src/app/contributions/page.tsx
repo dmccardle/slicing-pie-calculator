@@ -11,6 +11,7 @@ import { ContributionForm, ContributionRow } from "@/components/slicing-pie";
 import { Modal } from "@/components/ui/Modal";
 import type { ContributionType, Contribution } from "@/types/slicingPie";
 import { formatSlices } from "@/utils/slicingPie";
+import { ClipboardDocumentListIcon, PlusIcon, DocumentPlusIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 
 type SortField = "date" | "contributorId" | "type" | "value" | "slices";
 type SortDirection = "asc" | "desc";
@@ -193,12 +194,16 @@ export default function ContributionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contributions</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <ClipboardDocumentListIcon className="h-7 w-7 text-blue-600" />
+            Contributions
+          </h1>
           <p className="mt-1 text-sm text-gray-600">
             Log and track equity contributions
           </p>
         </div>
         <Button onClick={handleAdd} disabled={contributors.length === 0}>
+          <PlusIcon className="h-5 w-5" />
           Add Contribution
         </Button>
       </div>
@@ -226,7 +231,10 @@ export default function ContributionsPage() {
               You need to add contributors before you can log contributions.
             </p>
             <Link href="/contributors">
-              <Button className="mt-4">Go to Contributors</Button>
+              <Button className="mt-4">
+                Go to Contributors
+                <ArrowRightIcon className="h-5 w-5" />
+              </Button>
             </Link>
           </CardBody>
         </Card>
@@ -252,6 +260,7 @@ export default function ContributionsPage() {
             Start logging contributions to track equity distribution.
           </p>
           <Button className="mt-4" onClick={handleAdd}>
+            <DocumentPlusIcon className="h-5 w-5" />
             Log First Contribution
           </Button>
         </div>

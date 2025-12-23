@@ -43,7 +43,10 @@ export function Header({ appName, onMenuToggle, isSidebarOpen }: HeaderProps) {
       </button>
 
       {/* App name */}
-      <h1 className="text-xl font-semibold text-gray-900">{appName}</h1>
+      <h1 className="text-xl font-semibold text-gray-900">
+        <span className="mr-2" aria-hidden="true">🥧</span>
+        {appName}
+      </h1>
 
       {/* Right side - can be extended with user menu, notifications, etc. */}
       <div className="ml-auto flex items-center gap-4">

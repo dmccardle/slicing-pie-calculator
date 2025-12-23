@@ -17,6 +17,7 @@ import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EquitySummary, OnboardingModal } from "@/components/slicing-pie";
 import { formatSlices } from "@/utils/slicingPie";
+import { ChartPieIcon, UserPlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
 const ONBOARDING_DISMISSED_KEY = "slicingPie_onboardingDismissed";
 
@@ -112,7 +113,10 @@ function EmptyState() {
         </p>
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link href="/contributors">
-            <Button variant="primary">Add Contributors</Button>
+            <Button variant="primary">
+              <UserPlusIcon className="h-5 w-5" />
+              Add Contributors
+            </Button>
           </Link>
           <Button
             variant="secondary"
@@ -121,6 +125,7 @@ function EmptyState() {
               window.dispatchEvent(new CustomEvent("loadSampleData"));
             }}
           >
+            <SparklesIcon className="h-5 w-5" />
             Load Sample Data
           </Button>
         </div>
@@ -230,7 +235,10 @@ export default function Dashboard() {
         onStartEmpty={handleDismissOnboarding}
       />
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Equity Dashboard</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <ChartPieIcon className="h-7 w-7 text-blue-600" />
+          Equity Dashboard
+        </h1>
         <p className="mt-1 text-sm text-gray-600">
           Track and visualize equity distribution using the Slicing Pie model
         </p>

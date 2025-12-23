@@ -15,6 +15,11 @@ import {
 } from "@/utils/vesting";
 import { formatSlices, formatEquityPercentage } from "@/utils/slicingPie";
 import type { VestingState } from "@/types/slicingPie";
+import {
+  ArrowTrendingUpIcon,
+  UsersIcon,
+  SignalIcon,
+} from "@heroicons/react/24/outline";
 
 const VESTING_STATE_LABELS: Record<VestingState, string> = {
   none: "Fully Vested",
@@ -99,7 +104,10 @@ export default function ProjectionsPage() {
     <div className="space-y-6">
       {/* Header with Date Selector */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Projections</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <ArrowTrendingUpIcon className="h-7 w-7 text-blue-600" />
+          Projections
+        </h1>
         <p className="mt-1 text-sm text-gray-600">
           View future equity distribution based on vesting schedules
         </p>
@@ -142,7 +150,8 @@ export default function ProjectionsPage() {
       <div className={`grid gap-4 ${showUnvested ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"}`}>
         <Card>
           <CardBody className="text-center">
-            <p className="text-xs text-gray-500">
+            <p className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+              <span aria-hidden="true">🍕</span>
               {showUnvested ? "Vested Slices" : "Total Slices"}
             </p>
             <p className="mt-1 text-xl font-bold text-green-600">
@@ -154,7 +163,10 @@ export default function ProjectionsPage() {
         {showUnvested && (
           <Card>
             <CardBody className="text-center">
-              <p className="text-xs text-gray-500">Unvested Slices</p>
+              <p className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+                <span aria-hidden="true">⏳</span>
+                Unvested Slices
+              </p>
               <p className="mt-1 text-xl font-bold text-amber-600">
                 {formatSlices(summary.totalUnvestedSlices)}
               </p>
@@ -164,7 +176,8 @@ export default function ProjectionsPage() {
         )}
         <Card>
           <CardBody className="text-center">
-            <p className="text-xs text-gray-500">
+            <p className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+              <UsersIcon className="h-4 w-4" />
               {showUnvested ? "Percent Vested" : "Contributors"}
             </p>
             {showUnvested ? (
@@ -183,7 +196,10 @@ export default function ProjectionsPage() {
         </Card>
         <Card>
           <CardBody className="text-center">
-            <p className="text-xs text-gray-500">Status</p>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+              <SignalIcon className="h-4 w-4" />
+              Status
+            </p>
             <div className="mt-1 flex justify-center gap-1 flex-wrap">
               {summary.contributorsPreCliff > 0 && (
                 <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">

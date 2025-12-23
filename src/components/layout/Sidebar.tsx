@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { NavItem } from "@/types";
 import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
+import {
+  ArrowTrendingUpIcon,
+  CurrencyDollarIcon,
+} from "@heroicons/react/24/outline";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,7 +27,11 @@ export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
 
     // Add Projections when vesting is active (available AND enabled)
     if (vestingActive) {
-      const projectionsItem: NavItem = { label: "Projections", href: "/projections" };
+      const projectionsItem: NavItem = {
+        label: "Projections",
+        href: "/projections",
+        icon: <ArrowTrendingUpIcon className="h-5 w-5" />,
+      };
       if (settingsIndex >= 0) {
         items = [
           ...items.slice(0, settingsIndex),
@@ -37,7 +45,11 @@ export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
 
     // Add Equity Values when valuation is active (available AND enabled)
     if (valuationActive) {
-      const equityValuesItem: NavItem = { label: "Equity Values", href: "/equity-values" };
+      const equityValuesItem: NavItem = {
+        label: "Equity Values",
+        href: "/equity-values",
+        icon: <CurrencyDollarIcon className="h-5 w-5" />,
+      };
       // Find settings index again after possible insertion
       const newSettingsIndex = items.findIndex((item) => item.href === "/settings");
       if (newSettingsIndex >= 0) {
