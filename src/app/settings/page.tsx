@@ -11,6 +11,7 @@ import { formatSlices, formatCurrency, formatEquityPercentage } from "@/utils/sl
 import { useAISettings } from "@/hooks/useAISettings";
 import { AI_MODELS, type AIModel } from "@/types/ai";
 import { testApiKey } from "@/services/claude";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 
 interface SlicingPieExportData {
   version: string;
@@ -289,7 +290,10 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <Cog6ToothIcon className="h-7 w-7 text-blue-600" />
+          Settings
+        </h1>
         <p className="mt-1 text-sm text-gray-600">
           Manage your company settings and data
         </p>

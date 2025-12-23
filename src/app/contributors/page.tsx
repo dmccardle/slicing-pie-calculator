@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ContributorCard, ContributorForm } from "@/components/slicing-pie";
 import type { Contributor, ContributionType } from "@/types/slicingPie";
 import { calculateSlices, MULTIPLIERS } from "@/utils/slicingPie";
+import { UsersIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 
 export default function ContributorsPage() {
   const {
@@ -122,12 +123,18 @@ export default function ContributorsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contributors</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <UsersIcon className="h-7 w-7 text-blue-600" />
+            Contributors
+          </h1>
           <p className="mt-1 text-sm text-gray-600">
             Manage team members and their hourly rates
           </p>
         </div>
-        <Button onClick={handleAdd}>Add Contributor</Button>
+        <Button onClick={handleAdd}>
+          <PlusIcon className="h-5 w-5" />
+          Add Contributor
+        </Button>
       </div>
 
       {contributorsWithEquity.length === 0 ? (
@@ -152,6 +159,7 @@ export default function ContributorsPage() {
             Add your first team member to start tracking equity contributions.
           </p>
           <Button className="mt-4" onClick={handleAdd}>
+            <UserPlusIcon className="h-5 w-5" />
             Add First Contributor
           </Button>
         </div>
