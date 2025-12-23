@@ -2,6 +2,17 @@
  * Core TypeScript types for the standalone web app template
  */
 
+// Re-export PDF export types
+export type {
+  PDFExportOptions,
+  ContributorSummaryRow,
+  ContributionDetailRow,
+  ContributorContributionsSection,
+  VestingScheduleRow,
+  PDFReportData,
+} from "./pdfExport";
+export { DEFAULT_PDF_EXPORT_OPTIONS } from "./pdfExport";
+
 /**
  * Base entity interface - all entities extend this
  */
