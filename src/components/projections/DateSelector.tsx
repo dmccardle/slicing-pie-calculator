@@ -173,7 +173,7 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
         {/* Custom calendar dropdown */}
         {isOpen && (
           <div className="absolute z-50 mt-2 p-4 bg-white rounded-xl shadow-xl border border-gray-200 w-full sm:w-80">
-            {/* Month navigation */}
+            {/* Month/Year navigation */}
             <div className="flex items-center justify-between mb-4">
               <button
                 type="button"
@@ -185,9 +185,32 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <span className="text-lg font-semibold text-gray-900">
-                {MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}
-              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  value={viewDate.getMonth()}
+                  onChange={(e) => {
+                    const newMonth = parseInt(e.target.value, 10);
+                    setViewDate(prev => new Date(prev.getFullYear(), newMonth, 1));
+                  }}
+                  className="px-2 py-1 text-sm font-semibold text-gray-900 bg-transparent border border-gray-200 rounded-lg cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {MONTHS.map((month, index) => (
+                    <option key={month} value={index}>{month}</option>
+                  ))}
+                </select>
+                <select
+                  value={viewDate.getFullYear()}
+                  onChange={(e) => {
+                    const newYear = parseInt(e.target.value, 10);
+                    setViewDate(prev => new Date(newYear, prev.getMonth(), 1));
+                  }}
+                  className="px-2 py-1 text-sm font-semibold text-gray-900 bg-transparent border border-gray-200 rounded-lg cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Array.from({ length: 11 }, (_, i) => today.getFullYear() + i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="button"
                 onClick={handleNextMonth}
