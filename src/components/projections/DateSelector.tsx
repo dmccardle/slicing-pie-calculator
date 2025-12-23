@@ -126,21 +126,17 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Date display with custom picker */}
-      <div className="relative" ref={pickerRef}>
-        <label className="block text-sm text-gray-500 mb-2">
-          Showing projections as of
-        </label>
-
+      <div className="relative inline-block" ref={pickerRef}>
         {/* Clickable date display */}
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl cursor-pointer hover:border-blue-400 hover:from-blue-100 hover:to-blue-150 transition-all w-full sm:w-auto text-left"
+          className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
         >
           <svg
-            className="w-6 h-6 text-blue-600 flex-shrink-0"
+            className="w-4 h-4 text-gray-500 flex-shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -152,11 +148,11 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <span className="text-xl font-semibold text-gray-900 flex-1">
+          <span className="text-sm font-medium text-gray-900">
             {formatDisplayDate(selectedDate)}
           </span>
           <svg
-            className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -262,25 +258,24 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
       </div>
 
       {/* Quick presets */}
-      <div>
-        <p className="text-sm text-gray-500 mb-2">Quick select</p>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((preset) => {
-            const presetDate = formatDateISO(addMonths(today, preset.months));
-            const isSelected = selectedDate === presetDate;
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-gray-500">Quick:</span>
+        {PRESETS.map((preset) => {
+          const presetDate = formatDateISO(addMonths(today, preset.months));
+          const isSelected = selectedDate === presetDate;
 
-            return (
-              <Button
-                key={preset.label}
-                type="button"
-                variant={isSelected ? "primary" : "secondary"}
-                onClick={() => handlePresetClick(preset.months)}
-              >
-                {preset.label}
-              </Button>
-            );
-          })}
-        </div>
+          return (
+            <Button
+              key={preset.label}
+              type="button"
+              size="sm"
+              variant={isSelected ? "primary" : "secondary"}
+              onClick={() => handlePresetClick(preset.months)}
+            >
+              {preset.label}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );

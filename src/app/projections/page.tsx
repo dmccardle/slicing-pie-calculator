@@ -105,26 +105,22 @@ export default function ProjectionsPage() {
       </div>
 
       {/* Date Selector & Options */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Projection Date</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Show unvested</span>
-              <Toggle
-                checked={showUnvested}
-                onChange={setShowUnvested}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardBody>
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="text-sm font-medium text-gray-700">Projections as of:</span>
           <DateSelector
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
           />
-        </CardBody>
-      </Card>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Show unvested</span>
+          <Toggle
+            checked={showUnvested}
+            onChange={setShowUnvested}
+          />
+        </div>
+      </div>
 
       {/* Summary Stats */}
       <div className={`grid gap-4 ${showUnvested ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"}`}>
