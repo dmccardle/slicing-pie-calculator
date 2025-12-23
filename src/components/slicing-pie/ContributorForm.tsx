@@ -341,7 +341,7 @@ export function ContributorForm({
                       Fully vested:{" "}
                       {new Date(
                         new Date(vestingData.startDate).setMonth(
-                          new Date(vestingData.startDate).getMonth() + vestingData.vestingMonths
+                          new Date(vestingData.startDate).getMonth() + vestingData.cliffMonths + vestingData.vestingMonths
                         )
                       ).toLocaleDateString()}
                     </p>
