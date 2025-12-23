@@ -382,34 +382,44 @@ export default function Dashboard() {
                 </Link>
               </div>
             </CardHeader>
-            <CardBody>
-              <ul className="divide-y divide-gray-200">
-                {pieChartData.slice(0, 5).map((contributor) => (
-                  <li
-                    key={contributor.name}
-                    className="flex items-center justify-between py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: contributor.color }}
-                      />
-                      <span className="font-medium text-gray-900">
-                        {contributor.name}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Total Slices
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Percentage
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {pieChartData.map((contributor) => (
+                    <tr key={contributor.name} className="hover:bg-gray-50">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{ backgroundColor: contributor.color }}
+                          />
+                          {contributor.name}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                        {contributor.slices.toLocaleString()}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-gray-900">
                         {contributor.value.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {contributor.slices.toLocaleString()} slices
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </CardBody>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </>
       )}

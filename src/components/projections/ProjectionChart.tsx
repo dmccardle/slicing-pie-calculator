@@ -91,6 +91,7 @@ export function ProjectionChart({ data, showUnvested = true }: ProjectionChartPr
             outerRadius={100}
             fill="#8884d8"
             dataKey="value"
+            animationDuration={500}
             label={({ name, percent }) =>
               percent > 0.05 ? `${name.split(" ")[0]} ${(percent * 100).toFixed(0)}%` : ""
             }
