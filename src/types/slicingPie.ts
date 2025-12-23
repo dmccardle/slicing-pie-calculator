@@ -14,6 +14,34 @@ export interface Company {
 }
 
 /**
+ * Vesting configuration for a contributor
+ */
+export interface VestingConfig {
+  startDate: string;      // ISO date (YYYY-MM-DD)
+  cliffMonths: number;    // Months before vesting begins (0-24 typical)
+  vestingMonths: number;  // Total vesting period in months (12-60 typical)
+}
+
+/**
+ * Vesting state for a contributor
+ */
+export type VestingState = 'none' | 'preCliff' | 'vesting' | 'fullyVested';
+
+/**
+ * Computed vesting status for a contributor at a given date
+ */
+export interface VestingStatus {
+  state: VestingState;
+  percentVested: number;       // 0-100
+  vestedSlices: number;
+  unvestedSlices: number;
+  cliffDate: string | null;
+  fullVestDate: string | null;
+  monthsUntilCliff: number;
+  monthsUntilFullVest: number;
+}
+
+/**
  * Contributor - a person who contributes to the startup
  */
 export interface Contributor extends BaseEntity {
@@ -21,6 +49,7 @@ export interface Contributor extends BaseEntity {
   email?: string;
   hourlyRate: number;
   active: boolean;
+  vesting?: VestingConfig;  // Optional for backward compatibility
 }
 
 /**

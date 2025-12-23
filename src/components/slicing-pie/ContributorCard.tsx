@@ -3,8 +3,25 @@
 import React from "react";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type { ContributorWithEquity } from "@/types/slicingPie";
+import type { ContributorWithEquity, VestingState } from "@/types/slicingPie";
 import { formatSlices, formatEquityPercentage, formatCurrency } from "@/utils/slicingPie";
+import { useVesting } from "@/hooks/useVesting";
+import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
+import { VestingProgress } from "./VestingProgress";
+
+const VESTING_STATE_LABELS: Record<VestingState, string> = {
+  none: "Fully Vested",
+  preCliff: "Pre-Cliff",
+  vesting: "Vesting",
+  fullyVested: "Fully Vested",
+};
+
+const VESTING_STATE_COLORS: Record<VestingState, string> = {
+  none: "bg-green-100 text-green-800",
+  preCliff: "bg-amber-100 text-amber-800",
+  vesting: "bg-blue-100 text-blue-800",
+  fullyVested: "bg-green-100 text-green-800",
+};
 
 interface ContributorCardProps {
   contributor: ContributorWithEquity;
@@ -17,6 +34,9 @@ export function ContributorCard({
   onEdit,
   onDelete,
 }: ContributorCardProps) {
+  const { vestingEnabled } = useFeatureFlagsContext();
+  const vestingStatus = useVesting(contributor, contributor.totalSlices);
+
   return (
     <Card className="relative">
       <CardBody>
@@ -29,6 +49,17 @@ export function ContributorCard({
               {!contributor.active && (
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                   Inactive
+                </span>
+              )}
+              {vestingEnabled && vestingStatus && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    VESTING_STATE_COLORS[vestingStatus.state]
+                  }`}
+                >
+                  {VESTING_STATE_LABELS[vestingStatus.state]}
+                  {vestingStatus.state === "vesting" &&
+                    ` (${Math.round(vestingStatus.percentVested)}%)`}
                 </span>
               )}
             </div>
@@ -81,6 +112,39 @@ export function ContributorCard({
             </p>
           </div>
         </div>
+
+        {/* Vesting Details - Only when vesting is enabled and has vesting config */}
+        {vestingEnabled && vestingStatus && contributor.vesting && (
+          <div className="mt-3 rounded-lg border border-gray-200 p-3 space-y-3">
+            <VestingProgress vestingStatus={vestingStatus} size="md" />
+            <div className="flex items-center justify-between text-sm">
+              <div>
+                <span className="text-gray-500">Vested: </span>
+                <span className="font-medium text-gray-900">
+                  {formatSlices(vestingStatus.vestedSlices)} slices
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Unvested: </span>
+                <span className="font-medium text-gray-900">
+                  {formatSlices(vestingStatus.unvestedSlices)} slices
+                </span>
+              </div>
+            </div>
+            {vestingStatus.state === "preCliff" && vestingStatus.monthsUntilCliff > 0 && (
+              <p className="text-xs text-amber-600">
+                Cliff ends in {vestingStatus.monthsUntilCliff} month
+                {vestingStatus.monthsUntilCliff !== 1 ? "s" : ""}
+              </p>
+            )}
+            {vestingStatus.state === "vesting" && vestingStatus.monthsUntilFullVest > 0 && (
+              <p className="text-xs text-blue-600">
+                Fully vested in {vestingStatus.monthsUntilFullVest} month
+                {vestingStatus.monthsUntilFullVest !== 1 ? "s" : ""}
+              </p>
+            )}
+          </div>
+        )}
       </CardBody>
     </Card>
   );

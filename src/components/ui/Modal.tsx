@@ -39,14 +39,14 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
       {/* Modal */}
       <div
-        className="relative z-10 w-full max-w-lg rounded-lg bg-white shadow-xl mx-4"
+        className="relative z-10 w-full max-w-lg rounded-lg bg-white shadow-xl mx-4 my-4 max-h-[calc(100vh-2rem)] flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 flex-shrink-0">
             <h2
               id="modal-title"
               className="text-lg font-semibold text-gray-900"
@@ -75,8 +75,8 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           </div>
         )}
 
-        {/* Body */}
-        <div className="p-4">{children}</div>
+        {/* Body - scrollable when content overflows */}
+        <div className="p-4 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
