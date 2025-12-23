@@ -6,7 +6,12 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { PieChart, CHART_COLORS } from "@/components/charts/PieChart";
+import {
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+} from "recharts";
+import { CHART_COLORS } from "@/components/charts/PieChart";
 import type { ChartDataPoint } from "@/types";
 
 interface PDFChartContainerProps {
@@ -25,7 +30,10 @@ interface PDFChartContainerProps {
 
 /**
  * Hidden container that renders a PieChart for PDF export capture.
- * The chart is rendered off-screen but still in the DOM so html2canvas can capture it.
+ *
+ * IMPORTANT: This component renders Recharts directly WITHOUT ResponsiveContainer
+ * because ResponsiveContainer doesn't work with off-screen elements.
+ * html2canvas requires elements to be in the DOM but they can be positioned off-screen.
  *
  * Usage:
  * ```tsx
@@ -52,6 +60,11 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
     if (data.length === 0) {
       return null;
     }
+
+    // Calculate chart dimensions
+    const outerRadius = Math.min(width, height) / 3;
+    const cx = width / 2;
+    const cy = height / 2;
 
     // Position off-screen but still in the document flow for proper rendering
     // html2canvas requires the element to be rendered (not display:none or visibility:hidden)
@@ -89,15 +102,29 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
           width: "100%",
           height: "100%",
         }}>
-          <PieChart
-            data={dataWithColors}
-            height={height}
-            outerRadius={Math.min(width, height) / 3}
-            // Disable legend - it uses Tailwind classes with oklch colors
-            // that html2canvas can't parse. The PDF has its own summary table.
-            showLegend={false}
-            showTooltip={false}
-          />
+          {/*
+            Render Recharts directly with explicit width/height.
+            DO NOT use ResponsiveContainer - it doesn't work with off-screen elements!
+          */}
+          <RechartsPie width={width} height={height}>
+            <Pie
+              data={dataWithColors}
+              cx={cx}
+              cy={cy}
+              labelLine={false}
+              innerRadius={0}
+              outerRadius={outerRadius}
+              dataKey="value"
+              nameKey="name"
+            >
+              {dataWithColors.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]}
+                />
+              ))}
+            </Pie>
+          </RechartsPie>
         </div>
       </div>
     );
