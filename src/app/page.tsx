@@ -15,7 +15,8 @@ import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import { useSlicingPie } from "@/hooks/useSlicingPie";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { EquitySummary, OnboardingModal } from "@/components/slicing-pie";
+import { EquitySummary, OnboardingModal, LocalStorageBanner } from "@/components/slicing-pie";
+import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import { formatSlices } from "@/utils/slicingPie";
 import { ChartPieIcon, UserPlusIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
@@ -134,8 +135,17 @@ function EmptyState() {
   );
 }
 
+interface SlicingPieExportData {
+  version: string;
+  exportedAt: string;
+  company: Company;
+  contributors: Contributor[];
+  contributions: Contribution[];
+}
+
 export default function Dashboard() {
   const {
+    company,
     contributors,
     contributions,
     isLoading,
@@ -143,6 +153,10 @@ export default function Dashboard() {
     loadSampleData,
     vestedEquityData,
     vestingSummary,
+    updateCompany,
+    addContributor,
+    addContribution,
+    clearAllData,
   } = useSlicingPieContext();
 
   const { vestingEnabled } = useFeatureFlagsContext();
@@ -206,6 +220,37 @@ export default function Dashboard() {
     handleDismissOnboarding();
   };
 
+  const handleImport = (data: SlicingPieExportData) => {
+    // Clear existing data first
+    clearAllData();
+
+    // Update company
+    updateCompany(data.company);
+
+    // Import contributors
+    data.contributors.forEach((contributor) => {
+      addContributor({
+        name: contributor.name,
+        email: contributor.email,
+        hourlyRate: contributor.hourlyRate,
+        active: contributor.active ?? true,
+      });
+    });
+
+    // Import contributions
+    data.contributions.forEach((contribution) => {
+      addContribution({
+        contributorId: contribution.contributorId,
+        type: contribution.type,
+        value: contribution.value,
+        description: contribution.description,
+        date: contribution.date,
+        multiplier: contribution.multiplier,
+        slices: contribution.slices,
+      });
+    });
+  };
+
   // Listen for loadSampleData event from EmptyState
   useEffect(() => {
     const handleLoadSampleDataEvent = () => {
@@ -234,6 +279,15 @@ export default function Dashboard() {
         onLoadSampleData={handleLoadSampleData}
         onStartEmpty={handleDismissOnboarding}
       />
+
+      {/* Local Storage Warning Banner */}
+      <LocalStorageBanner
+        company={company}
+        contributors={contributors}
+        contributions={contributions}
+        onImport={handleImport}
+      />
+
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
           <ChartPieIcon className="h-7 w-7 text-blue-600" />
