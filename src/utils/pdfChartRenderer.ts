@@ -61,6 +61,9 @@ export async function renderChartToImage(
   }
 
   try {
+    // Ensure element is in the viewport for capture
+    const rect = element.getBoundingClientRect();
+
     const canvas = await html2canvas(element, {
       backgroundColor: renderOptions.backgroundColor,
       scale: renderOptions.scale,
@@ -69,6 +72,14 @@ export async function renderChartToImage(
       height: renderOptions.height,
       useCORS: true,
       allowTaint: true,
+      // Capture from element's actual position
+      x: rect.left < 0 ? rect.left : 0,
+      y: rect.top < 0 ? rect.top : 0,
+      scrollX: 0,
+      scrollY: 0,
+      // Ensure we capture the element even if off-screen
+      windowWidth: Math.max(document.documentElement.clientWidth, renderOptions.width + Math.abs(rect.left)),
+      windowHeight: Math.max(document.documentElement.clientHeight, renderOptions.height + Math.abs(rect.top)),
     });
 
     return canvas.toDataURL("image/png");
@@ -101,9 +112,16 @@ export async function waitForChartReady(
   return new Promise((resolve, reject) => {
     const check = () => {
       const svgElement = element.querySelector("svg");
+      // Check for Recharts-specific elements (pie slices have path elements)
+      const hasChartContent = svgElement && (
+        svgElement.querySelector("path") !== null ||
+        svgElement.querySelector("circle") !== null ||
+        svgElement.children.length > 2
+      );
 
-      if (svgElement && svgElement.children.length > 0) {
-        resolve();
+      if (hasChartContent) {
+        // Add a small delay to ensure animations complete
+        setTimeout(() => resolve(), 100);
         return;
       }
 

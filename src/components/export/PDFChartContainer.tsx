@@ -53,20 +53,28 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
       return null;
     }
 
-    return (
-      <div
-        ref={ref}
-        style={{
-          position: visible ? "relative" : "absolute",
-          left: visible ? 0 : "-9999px",
-          top: visible ? 0 : "-9999px",
+    // Position off-screen but still in the document flow for proper rendering
+    // html2canvas requires the element to be rendered (not display:none or visibility:hidden)
+    const containerStyle: React.CSSProperties = visible
+      ? {
+          position: "relative",
+          width: `${width}px`,
+          height: `${height}px`,
+          backgroundColor: "#ffffff",
+        }
+      : {
+          position: "absolute",
+          // Position just outside viewport - still renders but not visible
+          left: "-1000px",
+          top: "0px",
           width: `${width}px`,
           height: `${height}px`,
           backgroundColor: "#ffffff",
           overflow: "hidden",
-        }}
-        aria-hidden="true"
-      >
+        };
+
+    return (
+      <div ref={ref} style={containerStyle} aria-hidden={!visible}>
         <PieChart
           data={dataWithColors}
           height={height}

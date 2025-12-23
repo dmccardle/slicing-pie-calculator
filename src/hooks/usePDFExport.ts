@@ -122,11 +122,13 @@ export function usePDFExport(
             });
             setProgress(50);
           } catch (chartError) {
-            // Chart rendering failed, but we can continue without it
-            console.warn("Chart rendering failed:", chartError);
+            // Log chart rendering error but continue without chart
+            console.error("Chart rendering failed:", chartError);
+            // Don't set error state - PDF can still be generated without chart
             setProgress(50);
           }
         } else {
+          console.warn("No chart ref available for PDF export");
           setProgress(50);
         }
 
