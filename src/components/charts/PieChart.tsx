@@ -21,8 +21,8 @@ interface PieChartProps {
   className?: string;
 }
 
-// Default color palette
-const DEFAULT_COLORS = [
+// Default color palette - exported for PDF consistency
+export const CHART_COLORS = [
   "#2563eb", // blue-600
   "#16a34a", // green-600
   "#dc2626", // red-600
@@ -59,7 +59,7 @@ export function PieChart({
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={entry.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
+                fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]}
               />
             ))}
           </Pie>

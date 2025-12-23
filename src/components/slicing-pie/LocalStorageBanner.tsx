@@ -3,15 +3,20 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImportConfirmModal } from "./ImportConfirmModal";
+import { PDFChartContainer, PDFExportOptions } from "@/components/export";
 import { useExport } from "@/hooks/useExport";
 import { useValuation } from "@/hooks/useValuation";
+import { usePDFExport } from "@/hooks/usePDFExport";
 import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import type { ValuationConfig, ValuationHistoryEntry } from "@/types/valuation";
+import type { PDFExportOptions as PDFExportOptionsType, ChartDataPoint } from "@/types";
+import { CHART_COLORS } from "@/components/charts/PieChart";
 import {
   ExclamationTriangleIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 
 const DISMISSED_KEY = "localStorageBannerDismissed";
@@ -72,6 +77,12 @@ export function LocalStorageBanner({
   const [showImportModal, setShowImportModal] = useState(false);
   const [pendingImportData, setPendingImportData] = useState<SlicingPieExportData | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showPDFOptions, setShowPDFOptions] = useState(false);
+  const [pdfOptions, setPdfOptions] = useState<PDFExportOptionsType>({
+    includeContributionsBreakdown: true,
+    includeValuation: false,
+    includeVesting: false,
+  });
 
   const { status, exportJSON, importJSON } = useExport();
   const isProcessing = status === "exporting";
@@ -85,6 +96,40 @@ export function LocalStorageBanner({
     history: valuationHistory,
     importValuationData,
   } = useValuation();
+
+  // PDF export hook
+  const {
+    status: pdfStatus,
+    error: pdfError,
+    progress: pdfProgress,
+    exportPDF,
+    chartRef,
+  } = usePDFExport(
+    company,
+    contributors,
+    contributions,
+    valuationConfig ? { mode: valuationConfig.mode, manualValue: valuationConfig.manualValue } : null
+  );
+
+  // Calculate chart data for PDF export
+  const chartData: ChartDataPoint[] = React.useMemo(() => {
+    const activeContributions = contributions.filter((c) => !c.deletedAt);
+    const contributorSlices = new Map<string, number>();
+
+    activeContributions.forEach((c) => {
+      const current = contributorSlices.get(c.contributorId) || 0;
+      contributorSlices.set(c.contributorId, current + c.slices);
+    });
+
+    return contributors
+      .filter((c) => !c.deletedAt && (contributorSlices.get(c.id) || 0) > 0)
+      .map((contributor, index) => ({
+        name: contributor.name,
+        value: contributorSlices.get(contributor.id) || 0,
+        color: CHART_COLORS[index % CHART_COLORS.length],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [contributors, contributions]);
 
   // Check sessionStorage on mount
   useEffect(() => {
@@ -157,6 +202,16 @@ export function LocalStorageBanner({
     setPendingImportData(null);
   };
 
+  // PDF export with current options
+  const handlePDFExport = () => {
+    exportPDF(pdfOptions);
+  };
+
+  // Check if valuation is available
+  const hasValuation = valuationConfig?.manualValue != null && valuationConfig.manualValue > 0;
+
+  const isPDFExporting = pdfStatus === "preparing" || pdfStatus === "rendering";
+
   if (isDismissed) return null;
 
   return (
@@ -196,7 +251,47 @@ export function LocalStorageBanner({
                 <ArrowUpTrayIcon className="h-4 w-4" />
                 Import Data (.json file)
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowPDFOptions(!showPDFOptions)}
+                disabled={isProcessing || isPDFExporting || chartData.length === 0}
+              >
+                <DocumentArrowDownIcon className="h-4 w-4" />
+                {isPDFExporting
+                  ? `Exporting... ${pdfProgress}%`
+                  : "Export PDF Report"}
+              </Button>
             </div>
+
+            {/* PDF Export Options Panel */}
+            {showPDFOptions && !isPDFExporting && chartData.length > 0 && (
+              <div className="mt-3 p-3 bg-white border border-gray-200 rounded-lg">
+                <PDFExportOptions
+                  options={pdfOptions}
+                  onChange={setPdfOptions}
+                  valuationAvailable={hasValuation}
+                  vestingEnabled={vestingActive}
+                />
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePDFExport}
+                    disabled={isPDFExporting}
+                  >
+                    Generate PDF
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPDFOptions(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             {feedback && (
               <p
                 className={`mt-2 text-sm ${
@@ -205,6 +300,9 @@ export function LocalStorageBanner({
               >
                 {feedback.text}
               </p>
+            )}
+            {pdfError && (
+              <p className="mt-2 text-sm text-red-700">{pdfError}</p>
             )}
           </div>
           <button
@@ -224,6 +322,9 @@ export function LocalStorageBanner({
         importData={pendingImportData}
         hasExistingData={contributors.length > 0 || contributions.length > 0}
       />
+
+      {/* Hidden chart container for PDF export */}
+      <PDFChartContainer ref={chartRef} data={chartData} />
     </>
   );
 }
