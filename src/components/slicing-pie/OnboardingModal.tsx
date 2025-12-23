@@ -5,7 +5,9 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { ImportConfirmModal } from "./ImportConfirmModal";
 import { useExport } from "@/hooks/useExport";
+import { useValuation } from "@/hooks/useValuation";
 import { ArrowUpTrayIcon, PlusCircleIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import type { ValuationConfig, ValuationHistoryEntry } from "@/types/valuation";
 
 interface SlicingPieExportData {
   version: string;
@@ -13,6 +15,8 @@ interface SlicingPieExportData {
   company: { name: string };
   contributors: unknown[];
   contributions: unknown[];
+  valuationConfig?: ValuationConfig;
+  valuationHistory?: ValuationHistoryEntry[];
 }
 
 function validateImportData(data: unknown): data is SlicingPieExportData {
@@ -46,6 +50,7 @@ export function OnboardingModal({
   const [pendingImportData, setPendingImportData] = useState<SlicingPieExportData | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const { importJSON } = useExport();
+  const { importValuationData } = useValuation();
 
   const handleImportClick = async () => {
     setImportError(null);
@@ -65,6 +70,15 @@ export function OnboardingModal({
   const handleConfirmImport = () => {
     if (pendingImportData) {
       onImportData(pendingImportData);
+
+      // Import valuation data if present in file (preserves data for when feature is enabled)
+      if (pendingImportData.valuationConfig || pendingImportData.valuationHistory) {
+        importValuationData({
+          config: pendingImportData.valuationConfig,
+          history: pendingImportData.valuationHistory,
+        });
+      }
+
       setShowImportConfirm(false);
       setPendingImportData(null);
       onClose();
