@@ -173,17 +173,21 @@ export default function ProjectionsPage() {
           <CardBody className="text-center">
             <p className="text-xs text-gray-500">Status</p>
             <div className="mt-1 flex justify-center gap-1 flex-wrap">
-              {showUnvested && (
+              {summary.contributorsPreCliff > 0 && (
                 <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
-                  {summary.contributorsPreCliff} pre-cliff
+                  {summary.contributorsPreCliff} in cliff
                 </span>
               )}
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                {summary.contributorsVesting} vesting
-              </span>
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                {summary.contributorsFullyVested} vested
-              </span>
+              {summary.contributorsVesting > 0 && (
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                  {summary.contributorsVesting} vesting
+                </span>
+              )}
+              {summary.contributorsFullyVested > 0 && (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                  {summary.contributorsFullyVested} vested
+                </span>
+              )}
             </div>
           </CardBody>
         </Card>
