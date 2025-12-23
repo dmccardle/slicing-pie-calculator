@@ -141,7 +141,7 @@ export function OnboardingModal({
             onClick={handleImportClick}
           >
             <ArrowUpTrayIcon className="h-5 w-5" />
-            Import Data
+            Import Data (.json file)
             <span className="ml-2 text-xs opacity-75">
               Restore from a backup
             </span>

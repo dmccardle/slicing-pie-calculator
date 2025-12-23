@@ -155,7 +155,7 @@ export function LocalStorageBanner({
                 disabled={isProcessing}
               >
                 <ArrowDownTrayIcon className="h-4 w-4" />
-                Export JSON
+                Export Data (.json file)
               </Button>
               <Button
                 variant="secondary"
@@ -164,7 +164,7 @@ export function LocalStorageBanner({
                 disabled={isProcessing}
               >
                 <ArrowUpTrayIcon className="h-4 w-4" />
-                Import JSON
+                Import Data (.json file)
               </Button>
             </div>
             {feedback && (
