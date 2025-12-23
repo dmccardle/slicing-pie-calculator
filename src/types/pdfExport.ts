@@ -36,11 +36,11 @@ export interface ContributorSummaryRow {
   /** Currently vested slices (only when vesting included) */
   vestedSlices?: number;
 
-  /** Currently unvested slices (only when vesting included) */
-  unvestedSlices?: number;
+  /** Dollar value of vested slices (only when vesting + valuation included) */
+  vestedDollarValue?: number;
 
-  /** Vesting status text (e.g., "Past cliff", "In cliff period") */
-  vestingStatus?: string;
+  /** Date when vesting will be complete (only when vesting included) */
+  vestingCompletionDate?: string;
 }
 
 /**

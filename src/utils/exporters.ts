@@ -368,11 +368,14 @@ export async function exportEnhancedPDF(
 
   // Build summary table columns based on options
   const summaryHeaders: string[] = ["Name", "Slices", "%"];
-  if (options.includeValuation && data.companyValuation) {
-    summaryHeaders.push("Value");
-  }
   if (options.includeVesting) {
-    summaryHeaders.push("Vested", "Unvested");
+    summaryHeaders.push("Vested Slices");
+    if (options.includeValuation && data.companyValuation) {
+      summaryHeaders.push("Vested Value");
+    }
+    summaryHeaders.push("Fully Vested");
+  } else if (options.includeValuation && data.companyValuation) {
+    summaryHeaders.push("Value");
   }
 
   // Build summary table rows
@@ -383,15 +386,19 @@ export async function exportEnhancedPDF(
       `${formatNumberForPDF(row.percentage, 1)}%`,
     ];
 
-    if (options.includeValuation && data.companyValuation) {
-      rowData.push(row.dollarValue ? formatCurrencyForPDF(row.dollarValue) : "-");
-    }
-
     if (options.includeVesting) {
-      rowData.push(
-        row.vestedSlices !== undefined ? formatNumberForPDF(row.vestedSlices) : "-",
-        row.unvestedSlices !== undefined ? formatNumberForPDF(row.unvestedSlices) : "-"
-      );
+      // Vested Slices column
+      rowData.push(row.vestedSlices !== undefined ? formatNumberForPDF(row.vestedSlices) : "-");
+
+      // Vested Value column (only if valuation enabled)
+      if (options.includeValuation && data.companyValuation) {
+        rowData.push(row.vestedDollarValue !== undefined ? formatCurrencyForPDF(row.vestedDollarValue) : "-");
+      }
+
+      // Vesting Completion Date column
+      rowData.push(row.vestingCompletionDate || "-");
+    } else if (options.includeValuation && data.companyValuation) {
+      rowData.push(row.dollarValue ? formatCurrencyForPDF(row.dollarValue) : "-");
     }
 
     return rowData;
@@ -404,20 +411,23 @@ export async function exportEnhancedPDF(
     "100%",
   ];
 
-  if (options.includeValuation && data.companyValuation) {
-    totalsRow.push(formatCurrencyForPDF(data.companyValuation));
-  }
-
   if (options.includeVesting) {
     const totalVested = data.summaryRows.reduce(
       (sum, r) => sum + (r.vestedSlices || 0),
       0
     );
-    const totalUnvested = data.summaryRows.reduce(
-      (sum, r) => sum + (r.unvestedSlices || 0),
-      0
-    );
-    totalsRow.push(formatNumberForPDF(totalVested), formatNumberForPDF(totalUnvested));
+    totalsRow.push(formatNumberForPDF(totalVested));
+
+    if (options.includeValuation && data.companyValuation) {
+      const totalVestedValue = data.summaryRows.reduce(
+        (sum, r) => sum + (r.vestedDollarValue || 0),
+        0
+      );
+      totalsRow.push(formatCurrencyForPDF(totalVestedValue));
+    }
+    totalsRow.push(""); // Empty for completion date in totals row
+  } else if (options.includeValuation && data.companyValuation) {
+    totalsRow.push(formatCurrencyForPDF(data.companyValuation));
   }
 
   summaryRows.push(totalsRow);

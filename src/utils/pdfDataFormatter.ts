@@ -145,22 +145,6 @@ function addMonths(date: Date, months: number): string {
 }
 
 /**
- * Get vesting status label
- */
-function getVestingStatusLabel(status: VestingStatus): string {
-  switch (status.state) {
-    case "preCliff":
-      return `Pre-cliff (${status.monthsUntilCliff}mo)`;
-    case "vesting":
-      return `${status.percentVested}% vested`;
-    case "fullyVested":
-      return "Fully vested";
-    default:
-      return "No vesting";
-  }
-}
-
-/**
  * Format a contribution's value with appropriate unit
  */
 function formatContributionValue(
@@ -216,8 +200,15 @@ export function formatContributorSummary(
     const vestingStatus = calculateVestingStatus(contributor.vesting, slices);
     if (vestingStatus) {
       row.vestedSlices = vestingStatus.vestedSlices;
-      row.unvestedSlices = vestingStatus.unvestedSlices;
-      row.vestingStatus = getVestingStatusLabel(vestingStatus);
+      row.vestingCompletionDate = vestingStatus.fullVestDate
+        ? formatDate(vestingStatus.fullVestDate)
+        : undefined;
+
+      // Calculate vested dollar value if valuation is provided
+      if (valuation !== null && valuation > 0 && totalSlices > 0) {
+        const vestedPercentage = (vestingStatus.vestedSlices / totalSlices) * 100;
+        row.vestedDollarValue = (vestedPercentage / 100) * valuation;
+      }
     }
   }
 
