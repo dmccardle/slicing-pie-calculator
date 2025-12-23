@@ -9,3 +9,4 @@ export { DeletedContributionRow } from "./DeletedContributionRow";
 export { DeletedItemsList } from "./DeletedItemsList";
 export { RestoreButton } from "./RestoreButton";
 export { ActivityLog } from "./ActivityLog";
+export { LocalStorageBanner } from "./LocalStorageBanner";
