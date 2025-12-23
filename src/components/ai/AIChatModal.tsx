@@ -317,18 +317,21 @@ export function AIChatModal({
           </Button>
         </div>
 
-        {/* Quick apply latest suggestion */}
-        {latestSuggestion && messages.length > 0 && (
-          <div className="mt-3 flex justify-end">
+        {/* Footer with close and apply buttons */}
+        <div className="mt-3 flex items-center justify-between">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Close
+          </Button>
+          {latestSuggestion && messages.length > 0 && (
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
               onClick={() => handleApplySuggestion(latestSuggestion)}
             >
               Apply Latest Suggestion
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </Modal>
   );
