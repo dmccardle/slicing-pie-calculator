@@ -5,6 +5,7 @@ import { useSlicingPieContext } from "@/context/SlicingPieContext";
 import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import { Card, CardHeader, CardBody, CardFooter, Button, Input, Modal, Select, Toggle } from "@/components/ui";
 import { ExportPanel } from "@/components/export";
+import { ValuationConfig, ValuationHistory } from "@/components/valuation";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import { formatSlices, formatCurrency, formatEquityPercentage } from "@/utils/slicingPie";
 import { useAISettings } from "@/hooks/useAISettings";
@@ -73,7 +74,7 @@ export default function SettingsPage() {
   const [importSuccess, setImportSuccess] = useState(false);
 
   // Feature Flags
-  const { vestingEnabled, setVestingEnabled } = useFeatureFlagsContext();
+  const { vestingEnabled, setVestingEnabled, valuationEnabled, setValuationEnabled } = useFeatureFlagsContext();
 
   // AI Settings
   const {
@@ -438,6 +439,60 @@ NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
           )}
         </CardBody>
       </Card>
+
+      {/* Valuation Features */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Valuation Features</h2>
+            {valuationEnabled ? (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+                Enabled
+              </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                Disabled
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Enable company valuation features to convert equity percentages into approximate dollar values.
+            Set a manual valuation or calculate one from business metrics.
+          </p>
+
+          <Toggle
+            id="valuation-toggle"
+            label="Enable Valuation Features"
+            checked={valuationEnabled}
+            onChange={setValuationEnabled}
+            helperText="When enabled, you can configure company valuation and view equity values in dollar terms"
+          />
+
+          {valuationEnabled && (
+            <div className="rounded-md bg-blue-50 p-3">
+              <p className="text-sm text-blue-700">
+                <strong>Features enabled:</strong> Company valuation configuration and the Equity Values
+                page showing contributor equity in dollar terms.
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs text-amber-700">
+              <strong>Disclaimer:</strong> Valuations shown are rough estimates for discussion purposes only.
+              They are NOT official legal valuations and should not be used for legal, tax, or financial decisions.
+            </p>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Valuation Configuration - only shown when enabled */}
+      {valuationEnabled && <ValuationConfig showHeader />}
+
+      {/* Valuation History - only shown when enabled */}
+      {valuationEnabled && <ValuationHistory showHeader maxItems={5} />}
 
       {/* Data Export/Import */}
       <Card>

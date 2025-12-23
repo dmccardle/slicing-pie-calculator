@@ -7,6 +7,7 @@ import { useLocalStorage } from "./useLocalStorage";
  */
 export interface FeatureFlags {
   vestingEnabled: boolean;
+  valuationEnabled: boolean;
 }
 
 const FEATURE_FLAGS_KEY = "slicingPie_featureFlags";
@@ -23,8 +24,21 @@ function getDefaultVestingEnabled(): boolean {
   return envValue === "true";
 }
 
+/**
+ * Get default value for valuation enabled from environment variable
+ * Falls back to false if not set
+ */
+function getDefaultValuationEnabled(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const envValue = process.env.NEXT_PUBLIC_VALUATION_ENABLED;
+  return envValue === "true";
+}
+
 const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   vestingEnabled: false, // Will be overridden by env var check
+  valuationEnabled: false, // Will be overridden by env var check
 };
 
 /**
@@ -32,10 +46,11 @@ const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
  * Environment variable takes precedence for initial default value
  */
 export function useFeatureFlags() {
-  // Get initial value considering env var
+  // Get initial value considering env vars
   const initialFlags: FeatureFlags = {
     ...DEFAULT_FEATURE_FLAGS,
     vestingEnabled: getDefaultVestingEnabled(),
+    valuationEnabled: getDefaultValuationEnabled(),
   };
 
   const [flags, setFlags, { isLoading }] = useLocalStorage<FeatureFlags>(
@@ -47,9 +62,15 @@ export function useFeatureFlags() {
     setFlags((prev) => ({ ...prev, vestingEnabled: enabled }));
   };
 
+  const setValuationEnabled = (enabled: boolean) => {
+    setFlags((prev) => ({ ...prev, valuationEnabled: enabled }));
+  };
+
   return {
     vestingEnabled: flags.vestingEnabled,
     setVestingEnabled,
+    valuationEnabled: flags.valuationEnabled,
+    setValuationEnabled,
     isLoading,
   };
 }

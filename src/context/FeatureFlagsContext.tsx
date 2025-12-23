@@ -9,6 +9,8 @@ import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 interface FeatureFlagsContextValue {
   vestingEnabled: boolean;
   setVestingEnabled: (enabled: boolean) => void;
+  valuationEnabled: boolean;
+  setValuationEnabled: (enabled: boolean) => void;
   isLoading: boolean;
 }
 
@@ -22,11 +24,23 @@ export function FeatureFlagsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { vestingEnabled, setVestingEnabled, isLoading } = useFeatureFlags();
+  const {
+    vestingEnabled,
+    setVestingEnabled,
+    valuationEnabled,
+    setValuationEnabled,
+    isLoading,
+  } = useFeatureFlags();
 
   return (
     <FeatureFlagsContext.Provider
-      value={{ vestingEnabled, setVestingEnabled, isLoading }}
+      value={{
+        vestingEnabled,
+        setVestingEnabled,
+        valuationEnabled,
+        setValuationEnabled,
+        isLoading,
+      }}
     >
       {children}
     </FeatureFlagsContext.Provider>
