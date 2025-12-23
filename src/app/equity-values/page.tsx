@@ -226,7 +226,6 @@ export default function EquityValuesPage() {
   }
 
   // Calculate totals
-  const totalEquityValue = rows.reduce((sum, row) => sum + row.totalValue, 0);
   const totalVestedValue = vestingEnabled
     ? rows.reduce((sum, row) => sum + (row.vestedValue || 0), 0)
     : undefined;
@@ -257,12 +256,12 @@ export default function EquityValuesPage() {
 
         <Card>
           <CardBody>
-            <div className="text-sm text-gray-500">Total Allocated</div>
-            <div className="mt-1 text-2xl font-bold text-green-700">
-              {formatCompactNumber(totalEquityValue)}
+            <div className="text-sm text-gray-500">Total Slices</div>
+            <div className="mt-1 text-2xl font-bold text-gray-900">
+              {formatSlices(totalSlices)}
             </div>
             <div className="text-xs text-gray-400">
-              {formatSlices(totalSlices)} slices
+              {contributorsWithEquity.length} contributor{contributorsWithEquity.length !== 1 ? "s" : ""}
             </div>
           </CardBody>
         </Card>
@@ -275,11 +274,7 @@ export default function EquityValuesPage() {
                 {formatCompactNumber(totalVestedValue)}
               </div>
               <div className="text-xs text-gray-400">
-                {formatEquityPercentage(
-                  totalSlices > 0
-                    ? (totalVestedValue / currentValuation) * 100
-                    : 0
-                )} of company
+                {formatSlices(rows.reduce((sum, row) => sum + (row.vestedSlices || 0), 0))} vested slices
               </div>
             </CardBody>
           </Card>
