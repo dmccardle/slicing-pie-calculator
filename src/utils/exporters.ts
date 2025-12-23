@@ -311,7 +311,8 @@ export async function exportEnhancedPDF(
 
   // ========== SECTION 2: Pie Chart ==========
   if (chartImage) {
-    const chartWidth = 120;
+    // Chart is 500x300 (5:3 ratio) with legend on right side
+    const chartWidth = 150;
     const chartHeight = 90;
     const chartX = (PAGE_WIDTH - chartWidth) / 2; // Center the chart
 

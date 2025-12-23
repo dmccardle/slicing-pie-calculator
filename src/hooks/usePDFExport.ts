@@ -114,9 +114,9 @@ export function usePDFExport(
 
             if (cancelledRef.current) return;
 
-            // Render chart to image
+            // Render chart to image (500x300 to accommodate legend)
             chartImage = await renderChartToImage(chartRef.current, {
-              width: 400,
+              width: 500,
               height: 300,
               scale: 2,
             });
