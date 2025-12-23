@@ -5,12 +5,24 @@ import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 /**
  * Feature flags context value type
+ *
+ * - *Available: Is the feature available in this tier? (env var controlled)
+ * - *Enabled: Has the user enabled this feature? (user preference)
+ * - *Active: Is the feature both available AND enabled?
  */
 interface FeatureFlagsContextValue {
+  // Vesting feature
+  vestingAvailable: boolean;
   vestingEnabled: boolean;
+  vestingActive: boolean;
   setVestingEnabled: (enabled: boolean) => void;
+
+  // Valuation feature
+  valuationAvailable: boolean;
   valuationEnabled: boolean;
+  valuationActive: boolean;
   setValuationEnabled: (enabled: boolean) => void;
+
   isLoading: boolean;
 }
 
@@ -25,9 +37,13 @@ export function FeatureFlagsProvider({
   children: React.ReactNode;
 }) {
   const {
+    vestingAvailable,
     vestingEnabled,
+    vestingActive,
     setVestingEnabled,
+    valuationAvailable,
     valuationEnabled,
+    valuationActive,
     setValuationEnabled,
     isLoading,
   } = useFeatureFlags();
@@ -35,9 +51,13 @@ export function FeatureFlagsProvider({
   return (
     <FeatureFlagsContext.Provider
       value={{
+        vestingAvailable,
         vestingEnabled,
+        vestingActive,
         setVestingEnabled,
+        valuationAvailable,
         valuationEnabled,
+        valuationActive,
         setValuationEnabled,
         isLoading,
       }}

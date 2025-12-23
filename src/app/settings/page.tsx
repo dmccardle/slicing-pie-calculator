@@ -74,7 +74,15 @@ export default function SettingsPage() {
   const [importSuccess, setImportSuccess] = useState(false);
 
   // Feature Flags
-  const { vestingEnabled, setVestingEnabled, valuationEnabled, setValuationEnabled } = useFeatureFlagsContext();
+  const {
+    vestingAvailable,
+    vestingEnabled,
+    setVestingEnabled,
+    valuationAvailable,
+    valuationEnabled,
+    valuationActive,
+    setValuationEnabled,
+  } = useFeatureFlagsContext();
 
   // AI Settings
   const {
@@ -399,100 +407,104 @@ NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
         </CardBody>
       </Card>
 
-      {/* Vesting Features */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Vesting Features</h2>
-            {vestingEnabled ? (
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                Enabled
-              </span>
-            ) : (
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                Disabled
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardBody className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Enable cliff and vesting tracking to monitor when contributors&apos; equity becomes fully vested.
-            Configure start dates, cliff periods, and vesting schedules for each contributor.
-          </p>
-
-          <Toggle
-            id="vesting-toggle"
-            label="Enable Vesting Features"
-            checked={vestingEnabled}
-            onChange={setVestingEnabled}
-            helperText="When enabled, you can set vesting schedules for contributors and view future equity projections"
-          />
-
-          {vestingEnabled && (
-            <div className="rounded-md bg-blue-50 p-3">
-              <p className="text-sm text-blue-700">
-                <strong>Features enabled:</strong> Contributor vesting fields, vesting status badges,
-                and the Projections page for viewing future equity distribution.
-              </p>
+      {/* Vesting Features - only shown if available in this tier */}
+      {vestingAvailable && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Vesting Features</h2>
+              {vestingEnabled ? (
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+                  Enabled
+                </span>
+              ) : (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                  Disabled
+                </span>
+              )}
             </div>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* Valuation Features */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Valuation Features</h2>
-            {valuationEnabled ? (
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                Enabled
-              </span>
-            ) : (
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                Disabled
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardBody className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Enable company valuation features to convert equity percentages into approximate dollar values.
-            Set a manual valuation or calculate one from business metrics.
-          </p>
-
-          <Toggle
-            id="valuation-toggle"
-            label="Enable Valuation Features"
-            checked={valuationEnabled}
-            onChange={setValuationEnabled}
-            helperText="When enabled, you can configure company valuation and view equity values in dollar terms"
-          />
-
-          {valuationEnabled && (
-            <div className="rounded-md bg-blue-50 p-3">
-              <p className="text-sm text-blue-700">
-                <strong>Features enabled:</strong> Company valuation configuration and the Equity Values
-                page showing contributor equity in dollar terms.
-              </p>
-            </div>
-          )}
-
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs text-amber-700">
-              <strong>Disclaimer:</strong> Valuations shown are rough estimates for discussion purposes only.
-              They are NOT official legal valuations and should not be used for legal, tax, or financial decisions.
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Enable cliff and vesting tracking to monitor when contributors&apos; equity becomes fully vested.
+              Configure start dates, cliff periods, and vesting schedules for each contributor.
             </p>
-          </div>
-        </CardBody>
-      </Card>
 
-      {/* Valuation Configuration - only shown when enabled */}
-      {valuationEnabled && <ValuationConfig showHeader />}
+            <Toggle
+              id="vesting-toggle"
+              label="Enable Vesting Features"
+              checked={vestingEnabled}
+              onChange={setVestingEnabled}
+              helperText="When enabled, you can set vesting schedules for contributors and view future equity projections"
+            />
 
-      {/* Valuation History - only shown when enabled */}
-      {valuationEnabled && <ValuationHistory showHeader maxItems={5} />}
+            {vestingEnabled && (
+              <div className="rounded-md bg-blue-50 p-3">
+                <p className="text-sm text-blue-700">
+                  <strong>Features enabled:</strong> Contributor vesting fields, vesting status badges,
+                  and the Projections page for viewing future equity distribution.
+                </p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Valuation Features - only shown if available in this tier */}
+      {valuationAvailable && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Valuation Features</h2>
+              {valuationEnabled ? (
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+                  Enabled
+                </span>
+              ) : (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                  Disabled
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Enable company valuation features to convert equity percentages into approximate dollar values.
+              Set a manual valuation or calculate one from business metrics.
+            </p>
+
+            <Toggle
+              id="valuation-toggle"
+              label="Enable Valuation Features"
+              checked={valuationEnabled}
+              onChange={setValuationEnabled}
+              helperText="When enabled, you can configure company valuation and view equity values in dollar terms"
+            />
+
+            {valuationEnabled && (
+              <div className="rounded-md bg-blue-50 p-3">
+                <p className="text-sm text-blue-700">
+                  <strong>Features enabled:</strong> Company valuation configuration and the Equity Values
+                  page showing contributor equity in dollar terms.
+                </p>
+              </div>
+            )}
+
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs text-amber-700">
+                <strong>Disclaimer:</strong> Valuations shown are rough estimates for discussion purposes only.
+                They are NOT official legal valuations and should not be used for legal, tax, or financial decisions.
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Valuation Configuration - only shown when feature is active (available AND enabled) */}
+      {valuationActive && <ValuationConfig showHeader />}
+
+      {/* Valuation History - only shown when feature is active (available AND enabled) */}
+      {valuationActive && <ValuationHistory showHeader maxItems={5} />}
 
       {/* Data Export/Import */}
       <Card>
