@@ -7,7 +7,9 @@ import {
   UsersIcon,
   CalendarDaysIcon,
   ClockIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import type { ActivityEvent } from "@/types/slicingPie";
 
 interface SummaryItem {
   label: string;
@@ -22,6 +24,8 @@ interface EquitySummaryProps {
   activeContributors: number;
   contributionsThisMonth: number;
   recentActivityDate?: string;
+  recentActivityEvents?: ActivityEvent[];
+  deletedItemsCount?: number;
   className?: string;
 }
 
@@ -46,11 +50,33 @@ export function EquitySummary({
   activeContributors,
   contributionsThisMonth,
   recentActivityDate,
+  recentActivityEvents = [],
+  deletedItemsCount = 0,
   className = "",
 }: EquitySummaryProps) {
-  const formattedDate = recentActivityDate
-    ? new Date(recentActivityDate).toLocaleDateString()
-    : "No activity yet";
+  // Determine the most recent activity (contribution or deletion/restoration)
+  const recentDeletionEvent = recentActivityEvents[0];
+  const contributionDate = recentActivityDate ? new Date(recentActivityDate) : null;
+  const deletionDate = recentDeletionEvent ? new Date(recentDeletionEvent.timestamp) : null;
+
+  let activityLabel = "No activity yet";
+  let activitySubtext: string | undefined;
+
+  if (contributionDate && deletionDate) {
+    if (deletionDate > contributionDate) {
+      activityLabel = new Date(recentDeletionEvent.timestamp).toLocaleDateString();
+      activitySubtext = recentDeletionEvent.type === "deleted" ? "Last deletion" : "Last restoration";
+    } else {
+      activityLabel = contributionDate.toLocaleDateString();
+      activitySubtext = "Last contribution";
+    }
+  } else if (contributionDate) {
+    activityLabel = contributionDate.toLocaleDateString();
+    activitySubtext = "Last contribution";
+  } else if (deletionDate) {
+    activityLabel = deletionDate.toLocaleDateString();
+    activitySubtext = recentDeletionEvent.type === "deleted" ? "Last deletion" : "Last restoration";
+  }
 
   return (
     <div className={`flex flex-wrap gap-4 ${className}`}>
@@ -58,7 +84,7 @@ export function EquitySummary({
         label="Total Slices"
         value={formatSlices(totalSlices)}
         subtext="Across all contributors"
-        icon={<span aria-hidden="true">🍕</span>}
+        icon={<span aria-hidden="true">&#127829;</span>}
       />
       <SummaryCard
         label="Contributors"
@@ -74,10 +100,18 @@ export function EquitySummary({
       />
       <SummaryCard
         label="Recent Activity"
-        value={formattedDate}
-        subtext={recentActivityDate ? "Last contribution" : undefined}
+        value={activityLabel}
+        subtext={activitySubtext}
         icon={<ClockIcon className="h-4 w-4" />}
       />
+      {deletedItemsCount > 0 && (
+        <SummaryCard
+          label="In Trash"
+          value={deletedItemsCount}
+          subtext="Deleted items"
+          icon={<TrashIcon className="h-4 w-4" />}
+        />
+      )}
     </div>
   );
 }

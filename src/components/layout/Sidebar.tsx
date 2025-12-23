@@ -8,6 +8,7 @@ import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import {
   ArrowTrendingUpIcon,
   CurrencyDollarIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 interface SidebarProps {
@@ -61,6 +62,23 @@ export function Sidebar({ isOpen, onClose, navItems }: SidebarProps) {
       } else {
         items = [...items, equityValuesItem];
       }
+    }
+
+    // Add Deleted Items (always available, before Settings)
+    const deletedItem: NavItem = {
+      label: "Deleted Items",
+      href: "/deleted",
+      icon: <TrashIcon className="h-5 w-5" />,
+    };
+    const finalSettingsIndex = items.findIndex((item) => item.href === "/settings");
+    if (finalSettingsIndex >= 0) {
+      items = [
+        ...items.slice(0, finalSettingsIndex),
+        deletedItem,
+        ...items.slice(finalSettingsIndex),
+      ];
+    } else {
+      items = [...items, deletedItem];
     }
 
     return items;

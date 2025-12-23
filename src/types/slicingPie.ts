@@ -14,6 +14,34 @@ export interface Company {
 }
 
 /**
+ * Soft deletion support - entities with this can be soft-deleted
+ */
+export interface SoftDeletable {
+  deletedAt?: string;           // ISO timestamp when soft-deleted
+  deletedWithParent?: string;   // Parent entity ID if cascade-deleted
+}
+
+/**
+ * Activity event types for tracking deletions and restorations
+ */
+export type ActivityEventType = 'deleted' | 'restored';
+export type ActivityEntityType = 'contributor' | 'contribution';
+
+/**
+ * Activity event for tracking deletion/restoration history
+ */
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  entityType: ActivityEntityType;
+  entityId: string;
+  entityName: string;
+  timestamp: string;
+  slicesAffected: number;
+  cascadeCount?: number;  // Number of contributions cascade-deleted (for contributors)
+}
+
+/**
  * Vesting configuration for a contributor
  */
 export interface VestingConfig {
@@ -44,12 +72,13 @@ export interface VestingStatus {
 /**
  * Contributor - a person who contributes to the startup
  */
-export interface Contributor extends BaseEntity {
+export interface Contributor extends BaseEntity, SoftDeletable {
   name: string;
   email?: string;
   hourlyRate: number;
   active: boolean;
   vesting?: VestingConfig;  // Optional for backward compatibility
+  // Note: deletedWithParent is never set for contributors (they are top-level)
 }
 
 /**
@@ -65,7 +94,7 @@ export type ContributionType = 'time' | 'cash' | 'non-cash' | 'idea' | 'relation
 /**
  * Contribution - a single contribution made by a contributor
  */
-export interface Contribution extends BaseEntity {
+export interface Contribution extends BaseEntity, SoftDeletable {
   contributorId: string;
   type: ContributionType;
   value: number;
@@ -73,6 +102,7 @@ export interface Contribution extends BaseEntity {
   date: string; // ISO date (YYYY-MM-DD)
   multiplier: number;
   slices: number;
+  // deletedWithParent is set to contributor ID when cascade-deleted
 }
 
 /**
