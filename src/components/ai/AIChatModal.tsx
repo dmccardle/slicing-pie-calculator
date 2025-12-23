@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Form/Input";
@@ -9,6 +9,7 @@ import type { ChatMessage as ChatMessageType, ValuationContext, AISuggestion } f
 import { useAISettings } from "@/hooks/useAISettings";
 import { getValuationSuggestion } from "@/services/claude";
 import { formatCurrency } from "@/utils/slicingPie";
+import { useSlicingPieContext } from "@/context/SlicingPieContext";
 
 interface AIChatModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+const SHARE_CONTEXT_KEY = "slicing-pie-ai-share-context";
+
 export function AIChatModal({
   isOpen,
   onClose,
@@ -30,13 +33,56 @@ export function AIChatModal({
   initialMessage,
 }: AIChatModalProps) {
   const { apiKey, modelPreference, isConfigured } = useAISettings();
+  const { contributions, contributors, contributorsWithEquity } = useSlicingPieContext();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latestSuggestion, setLatestSuggestion] = useState<AISuggestion | null>(null);
+  const [shareContext, setShareContext] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(SHARE_CONTEXT_KEY) === "true";
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Save share context preference
+  const handleShareContextChange = (enabled: boolean) => {
+    setShareContext(enabled);
+    localStorage.setItem(SHARE_CONTEXT_KEY, String(enabled));
+  };
+
+  // Build enhanced context when sharing is enabled
+  const enhancedContext: ValuationContext = useMemo(() => {
+    if (!shareContext) return context;
+
+    // Get the current contributor's equity percentage
+    const currentContributor = contributorsWithEquity.find(
+      (c) => c.name === context.contributorName
+    );
+
+    // Calculate total slices
+    const totalSlices = contributions.reduce((sum, c) => sum + c.slices, 0);
+
+    // Get existing contributions for this contributor
+    const contributorRecord = contributors.find((c) => c.name === context.contributorName);
+    const existingContributions = contributorRecord
+      ? contributions
+          .filter((c) => c.contributorId === contributorRecord.id)
+          .map((c) => ({
+            type: c.type,
+            value: c.value,
+            slices: c.slices,
+          }))
+      : [];
+
+    return {
+      ...context,
+      existingContributions,
+      totalCompanySlices: totalSlices,
+      contributorEquityPercentage: currentContributor?.equityPercentage,
+    };
+  }, [context, shareContext, contributions, contributors, contributorsWithEquity]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -76,7 +122,7 @@ export function AIChatModal({
         apiKey,
         modelPreference,
         userMessage.content,
-        context,
+        enhancedContext,
         messages
       );
 
@@ -103,7 +149,7 @@ export function AIChatModal({
     } finally {
       setIsLoading(false);
     }
-  }, [input, apiKey, modelPreference, context, messages, isLoading]);
+  }, [input, apiKey, modelPreference, enhancedContext, messages, isLoading]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -151,15 +197,50 @@ export function AIChatModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="AI Valuation Assistant">
       <div className="flex flex-col" style={{ height: "60vh", maxHeight: "500px" }}>
+        {/* Share Context Toggle */}
+        <div className="mb-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+          <label className="flex cursor-pointer items-center justify-between">
+            <div className="flex-1">
+              <span className="text-sm font-medium text-gray-700">
+                Share contribution history
+              </span>
+              <p className="text-xs text-gray-500">
+                Helps the AI give more accurate suggestions based on your existing contributions
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={shareContext}
+              onClick={() => handleShareContextChange(!shareContext)}
+              className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                shareContext ? "bg-blue-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  shareContext ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+        </div>
+
         {/* Context Banner */}
         <div className="mb-3 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
           <span className="font-medium">{context.contributorName}</span>
           <span className="mx-2">|</span>
           <span>{formatCurrency(context.contributorHourlyRate)}/hr</span>
-          {context.contributorEquityPercentage !== undefined && (
+          {enhancedContext.contributorEquityPercentage !== undefined && (
             <>
               <span className="mx-2">|</span>
-              <span>{context.contributorEquityPercentage.toFixed(1)}% equity</span>
+              <span>{enhancedContext.contributorEquityPercentage.toFixed(1)}% equity</span>
+            </>
+          )}
+          {shareContext && enhancedContext.existingContributions && enhancedContext.existingContributions.length > 0 && (
+            <>
+              <span className="mx-2">|</span>
+              <span>{enhancedContext.existingContributions.length} prior contributions</span>
             </>
           )}
         </div>

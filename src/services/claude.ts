@@ -83,6 +83,11 @@ The Slicing Pie model tracks contributions as "slices" using these multipliers:
 - Contributor: ${context.contributorName} (hourly rate: $${context.contributorHourlyRate}/hr)
 ${context.contributorEquityPercentage !== undefined ? `- Current equity: ${context.contributorEquityPercentage.toFixed(1)}%` : ""}
 ${context.totalCompanySlices !== undefined ? `- Total company slices: ${context.totalCompanySlices.toLocaleString()}` : ""}
+${context.existingContributions && context.existingContributions.length > 0 ? `
+## This Contributor's Existing Contributions
+${context.existingContributions.map((c) => `- ${c.type}: ${c.type === "time" ? `${c.value} hours` : `$${c.value}`} (${c.slices.toLocaleString()} slices)`).join("\n")}
+
+Use this contribution history to provide more accurate and contextual suggestions. Consider patterns in their past contributions and how the new contribution fits with their existing work.` : ""}
 
 ## Your Role
 Help value contributions fairly by:
