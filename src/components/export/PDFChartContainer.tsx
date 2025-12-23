@@ -55,6 +55,7 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
 
     // Position off-screen but still in the document flow for proper rendering
     // html2canvas requires the element to be rendered (not display:none or visibility:hidden)
+    // IMPORTANT: Use inline styles with hex colors only - html2canvas doesn't support oklch
     const containerStyle: React.CSSProperties = visible
       ? {
           position: "relative",
@@ -74,14 +75,30 @@ export const PDFChartContainer = forwardRef<HTMLDivElement, PDFChartContainerPro
         };
 
     return (
-      <div ref={ref} style={containerStyle} aria-hidden={!visible}>
-        <PieChart
-          data={dataWithColors}
-          height={height}
-          outerRadius={Math.min(width, height) / 3}
-          showLegend={true}
-          showTooltip={false}
-        />
+      <div
+        ref={ref}
+        style={containerStyle}
+        aria-hidden={!visible}
+        // Force standard colors for html2canvas compatibility
+        data-html2canvas-ignore-colors="false"
+      >
+        {/* Wrapper to isolate from Tailwind's oklch colors */}
+        <div style={{
+          backgroundColor: "#ffffff",
+          color: "#000000",
+          width: "100%",
+          height: "100%",
+        }}>
+          <PieChart
+            data={dataWithColors}
+            height={height}
+            outerRadius={Math.min(width, height) / 3}
+            // Disable legend - it uses Tailwind classes with oklch colors
+            // that html2canvas can't parse. The PDF has its own summary table.
+            showLegend={false}
+            showTooltip={false}
+          />
+        </div>
       </div>
     );
   }
