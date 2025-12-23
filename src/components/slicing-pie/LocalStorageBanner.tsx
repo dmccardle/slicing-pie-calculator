@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { ImportConfirmModal } from "./ImportConfirmModal";
 import { useExport } from "@/hooks/useExport";
 import { useValuation } from "@/hooks/useValuation";
+import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import type { ValuationConfig, ValuationHistoryEntry } from "@/types/valuation";
 import {
@@ -75,7 +76,10 @@ export function LocalStorageBanner({
   const { status, exportJSON, importJSON } = useExport();
   const isProcessing = status === "exporting";
 
-  // Valuation data for export/import
+  // Feature flags
+  const { valuationActive, vestingActive } = useFeatureFlagsContext();
+
+  // Valuation data for export/import (only when feature is active)
   const {
     config: valuationConfig,
     history: valuationHistory,
@@ -94,14 +98,18 @@ export function LocalStorageBanner({
   };
 
   const handleExport = () => {
+    // Strip vesting from contributors if vesting feature is not active
+    const contributorsForExport = vestingActive
+      ? contributors
+      : contributors.map(({ vesting: _vesting, ...rest }) => rest);
+
     const exportData: SlicingPieExportData = {
       version: "1.0.0",
       exportedAt: new Date().toISOString(),
       company,
-      contributors,
+      contributors: contributorsForExport,
       contributions,
-      valuationConfig,
-      valuationHistory,
+      ...(valuationActive && { valuationConfig, valuationHistory }),
     };
     exportJSON(exportData, "slicing-pie-backup");
     setFeedback({ type: "success", text: "Data exported successfully!" });

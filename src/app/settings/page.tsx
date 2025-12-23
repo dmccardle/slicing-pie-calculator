@@ -84,6 +84,7 @@ export default function SettingsPage() {
   const {
     vestingAvailable,
     vestingEnabled,
+    vestingActive,
     setVestingEnabled,
     valuationAvailable,
     valuationEnabled,
@@ -206,15 +207,19 @@ export default function SettingsPage() {
     URL.revokeObjectURL(link.href);
   };
 
-  // Prepare export data
+  // Prepare export data (only include feature data when features are active)
+  // Strip vesting from contributors if vesting feature is not active
+  const contributorsForExport = vestingActive
+    ? contributors
+    : contributors.map(({ vesting: _vesting, ...rest }) => rest);
+
   const exportData: SlicingPieExportData = {
     version: "1.0.0",
     exportedAt: new Date().toISOString(),
     company,
-    contributors,
+    contributors: contributorsForExport,
     contributions,
-    valuationConfig,
-    valuationHistory,
+    ...(valuationActive && { valuationConfig, valuationHistory }),
   };
 
   // Excel sheets for Slicing Pie
