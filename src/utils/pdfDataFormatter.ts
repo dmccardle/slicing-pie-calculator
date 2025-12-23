@@ -88,6 +88,9 @@ function calculateVestingStatus(
     (asOfDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
   );
 
+  // Total months until fully vested = cliff + vesting period
+  const totalVestingMonths = vesting.cliffMonths + vesting.vestingMonths;
+
   // Pre-cliff period
   if (monthsElapsed < vesting.cliffMonths) {
     return {
@@ -96,30 +99,29 @@ function calculateVestingStatus(
       vestedSlices: 0,
       unvestedSlices: totalSlices,
       cliffDate: addMonths(startDate, vesting.cliffMonths),
-      fullVestDate: addMonths(startDate, vesting.vestingMonths),
+      fullVestDate: addMonths(startDate, totalVestingMonths),
       monthsUntilCliff: vesting.cliffMonths - monthsElapsed,
-      monthsUntilFullVest: vesting.vestingMonths - monthsElapsed,
+      monthsUntilFullVest: totalVestingMonths - monthsElapsed,
     };
   }
 
-  // Fully vested
-  if (monthsElapsed >= vesting.vestingMonths) {
+  // Fully vested (past cliff + vesting period)
+  if (monthsElapsed >= totalVestingMonths) {
     return {
       state: "fullyVested",
       percentVested: 100,
       vestedSlices: totalSlices,
       unvestedSlices: 0,
       cliffDate: addMonths(startDate, vesting.cliffMonths),
-      fullVestDate: addMonths(startDate, vesting.vestingMonths),
+      fullVestDate: addMonths(startDate, totalVestingMonths),
       monthsUntilCliff: 0,
       monthsUntilFullVest: 0,
     };
   }
 
-  // Vesting period
+  // Vesting period (after cliff, before fully vested)
   const vestingProgress =
-    (monthsElapsed - vesting.cliffMonths) /
-    (vesting.vestingMonths - vesting.cliffMonths);
+    (monthsElapsed - vesting.cliffMonths) / vesting.vestingMonths;
   const percentVested = Math.min(100, Math.round(vestingProgress * 100));
   const vestedSlices = Math.round((percentVested / 100) * totalSlices);
 
@@ -129,9 +131,9 @@ function calculateVestingStatus(
     vestedSlices,
     unvestedSlices: totalSlices - vestedSlices,
     cliffDate: addMonths(startDate, vesting.cliffMonths),
-    fullVestDate: addMonths(startDate, vesting.vestingMonths),
+    fullVestDate: addMonths(startDate, totalVestingMonths),
     monthsUntilCliff: 0,
-    monthsUntilFullVest: vesting.vestingMonths - monthsElapsed,
+    monthsUntilFullVest: totalVestingMonths - monthsElapsed,
   };
 }
 
@@ -268,9 +270,9 @@ export function generateVestingSchedule(
     const cliffEndDate = new Date(startDate);
     cliffEndDate.setMonth(cliffEndDate.getMonth() + vesting.cliffMonths);
 
-    // Calculate vesting end date
+    // Calculate full vesting end date = start + cliff + vesting period
     const vestingEndDate = new Date(startDate);
-    vestingEndDate.setMonth(vestingEndDate.getMonth() + vesting.vestingMonths);
+    vestingEndDate.setMonth(vestingEndDate.getMonth() + vesting.cliffMonths + vesting.vestingMonths);
 
     return {
       name: contributor.name,
