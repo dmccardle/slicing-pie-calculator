@@ -52,3 +52,6 @@ next-env.d.ts
 # Misc
 *.log
 *.tmp
+
+# Generated exports
+*.pdf
