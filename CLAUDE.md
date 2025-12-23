@@ -290,6 +290,7 @@ To customize this template for your project:
 - TypeScript 5.x (strict mode) + React Context, existing useLocalStorage and useEntities hooks (003-cliff-vesting-projections)
 - localStorage via existing hooks (003-cliff-vesting-projections)
 - localStorage (via existing useLocalStorage hook) (004-company-valuation)
+- Browser localStorage (via existing useLocalStorage and useEntities hooks) (005-soft-deletion)
 
 ## Recent Changes
 - 001-template-core: Added TypeScript 5.x (strict mode) + Next.js 16 (App Router), React 19, Tailwind CSS 4, Recharts, xlsx, jsPDF

@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useMemo, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useEntities, type Entity } from "@/hooks/useEntities";
+import { useActivityLog } from "@/hooks/useActivityLog";
+import type { ActivityEvent } from "@/types/slicingPie";
 import type {
   Company,
   Contributor,
@@ -47,6 +49,7 @@ interface SlicingPieContextValue {
   ) => Contributor | null;
   removeContributor: (id: string) => boolean;
   getContributorById: (id: string) => Contributor | undefined;
+  getDeletedContributors: () => Contributor[];
 
   // Contributions
   contributions: Contribution[];
@@ -59,6 +62,9 @@ interface SlicingPieContextValue {
   ) => Contribution | null;
   removeContribution: (id: string) => boolean;
   getContributionById: (id: string) => Contribution | undefined;
+  getDeletedContributions: () => Contribution[];
+  restoreContributor: (id: string) => boolean;
+  restoreContribution: (id: string) => boolean;
 
   // Computed values
   totalSlices: number;
@@ -73,6 +79,10 @@ interface SlicingPieContextValue {
   clearAllData: () => void;
   hasData: boolean;
   hasSampleData: boolean;
+
+  // Activity log
+  activityEvents: ActivityEvent[];
+  getRecentActivityEvents: (limit?: number) => ActivityEvent[];
 
   // Loading state
   isLoading: boolean;
@@ -92,13 +102,24 @@ export function SlicingPieProvider({
   const [company, setCompany, { isLoading: companyLoading }] =
     useLocalStorage<Company>("slicingPie_company", DEFAULT_COMPANY);
 
+  // Activity log
+  const {
+    events: activityEvents,
+    addEvent: addActivityEvent,
+    getRecentEvents: getRecentActivityEvents,
+  } = useActivityLog();
+
   // Contributors using useEntities
   const {
-    entities: contributors,
+    entities: allContributors,
     add: addContributorEntity,
     update: updateContributorEntity,
-    remove: removeContributorEntity,
+    remove: _removeContributorEntity,
+    softDelete: softDeleteContributor,
+    restore: restoreContributorEntity,
     getById: getContributorById,
+    getActive: getActiveContributors,
+    getDeleted: getDeletedContributors,
     clear: clearContributors,
     isLoading: contributorsLoading,
   } = useEntities<Entity<Omit<Contributor, "id" | "createdAt" | "updatedAt">>>(
@@ -107,16 +128,24 @@ export function SlicingPieProvider({
 
   // Contributions using useEntities
   const {
-    entities: contributions,
+    entities: allContributions,
     add: addContributionEntity,
     update: updateContributionEntity,
-    remove: removeContributionEntity,
+    remove: _removeContributionEntity,
+    softDelete: softDeleteContribution,
+    restore: restoreContributionEntity,
     getById: getContributionById,
+    getActive: getActiveContributions,
+    getDeleted: getDeletedContributions,
     clear: clearContributions,
     isLoading: contributionsLoading,
   } = useEntities<Entity<Omit<Contribution, "id" | "createdAt" | "updatedAt">>>(
     "slicingPie_contributions"
   );
+
+  // Filter to get only active (non-deleted) entities
+  const contributors = useMemo(() => getActiveContributors(), [getActiveContributors]);
+  const contributions = useMemo(() => getActiveContributions(), [getActiveContributions]);
 
   // Update company
   const updateCompany = useCallback(
@@ -146,9 +175,38 @@ export function SlicingPieProvider({
 
   const removeContributor = useCallback(
     (id: string) => {
-      return removeContributorEntity(id);
+      // Get contributor info before deletion for logging
+      const contributor = allContributors.find((c) => c.id === id);
+      if (!contributor) return false;
+
+      // Soft delete the contributor
+      const deleted = softDeleteContributor(id);
+
+      if (deleted) {
+        // Cascade: soft delete all contributions for this contributor
+        const contributorContributions = allContributions.filter(
+          (c) => c.contributorId === id && !c.deletedAt
+        );
+        const totalSlices = contributorContributions.reduce((sum, c) => sum + c.slices, 0);
+
+        contributorContributions.forEach((contribution) => {
+          softDeleteContribution(contribution.id, id); // Pass contributor ID as parent
+        });
+
+        // Log activity event
+        addActivityEvent(
+          "deleted",
+          "contributor",
+          id,
+          contributor.name,
+          totalSlices,
+          contributorContributions.length
+        );
+      }
+
+      return deleted;
     },
-    [removeContributorEntity]
+    [softDeleteContributor, softDeleteContribution, allContributions, allContributors, addActivityEvent]
   );
 
   // Type-safe contribution operations
@@ -174,9 +232,96 @@ export function SlicingPieProvider({
 
   const removeContribution = useCallback(
     (id: string) => {
-      return removeContributionEntity(id);
+      // Get contribution info before deletion for logging
+      const contribution = allContributions.find((c) => c.id === id);
+      if (!contribution) return false;
+
+      // Soft delete individual contribution (no parent - not cascade deleted)
+      const deleted = softDeleteContribution(id);
+
+      if (deleted) {
+        // Get contributor name for the log
+        const contributor = allContributors.find((c) => c.id === contribution.contributorId);
+        const entityName = `${contribution.type} contribution` + (contributor ? ` (${contributor.name})` : "");
+
+        // Log activity event
+        addActivityEvent(
+          "deleted",
+          "contribution",
+          id,
+          entityName,
+          contribution.slices
+        );
+      }
+
+      return deleted;
     },
-    [removeContributionEntity]
+    [softDeleteContribution, allContributions, allContributors, addActivityEvent]
+  );
+
+  // Restore a contributor and cascade-restore their contributions
+  const restoreContributor = useCallback(
+    (id: string) => {
+      // Get contributor info before restoration for logging
+      const contributor = allContributors.find((c) => c.id === id);
+      if (!contributor) return false;
+
+      const restored = restoreContributorEntity(id);
+
+      if (restored) {
+        // Cascade: restore all contributions that were deleted with this contributor
+        const cascadeContributions = allContributions.filter(
+          (c) => c.deletedWithParent === id
+        );
+        const totalSlices = cascadeContributions.reduce((sum, c) => sum + c.slices, 0);
+
+        cascadeContributions.forEach((contribution) => {
+          restoreContributionEntity(contribution.id);
+        });
+
+        // Log activity event
+        addActivityEvent(
+          "restored",
+          "contributor",
+          id,
+          contributor.name,
+          totalSlices,
+          cascadeContributions.length
+        );
+      }
+
+      return restored;
+    },
+    [restoreContributorEntity, restoreContributionEntity, allContributions, allContributors, addActivityEvent]
+  );
+
+  // Restore an individual contribution
+  const restoreContribution = useCallback(
+    (id: string) => {
+      // Get contribution info before restoration for logging
+      const contribution = allContributions.find((c) => c.id === id);
+      if (!contribution) return false;
+
+      const restored = restoreContributionEntity(id);
+
+      if (restored) {
+        // Get contributor name for the log
+        const contributor = allContributors.find((c) => c.id === contribution.contributorId);
+        const entityName = `${contribution.type} contribution` + (contributor ? ` (${contributor.name})` : "");
+
+        // Log activity event
+        addActivityEvent(
+          "restored",
+          "contribution",
+          id,
+          entityName,
+          contribution.slices
+        );
+      }
+
+      return restored;
+    },
+    [restoreContributionEntity, allContributions, allContributors, addActivityEvent]
   );
 
   // Computed values
@@ -219,12 +364,12 @@ export function SlicingPieProvider({
     );
   }, [contributors, contributorSlicesMap]);
 
-  const hasData = contributors.length > 0 || contributions.length > 0;
+  const hasData = allContributors.length > 0 || allContributions.length > 0;
 
   const hasSampleData = useMemo(() => {
     const sampleIds = SAMPLE_CONTRIBUTORS.map((c) => c.id);
-    return contributors.some((c) => sampleIds.includes(c.id));
-  }, [contributors]);
+    return allContributors.some((c) => sampleIds.includes(c.id));
+  }, [allContributors]);
 
   // Load sample data
   const loadSampleData = useCallback(() => {
@@ -279,6 +424,7 @@ export function SlicingPieProvider({
       getContributorById: getContributorById as (
         id: string
       ) => Contributor | undefined,
+      getDeletedContributors: getDeletedContributors as () => Contributor[],
       contributions: contributions as unknown as Contribution[],
       addContribution,
       updateContribution,
@@ -286,6 +432,9 @@ export function SlicingPieProvider({
       getContributionById: getContributionById as (
         id: string
       ) => Contribution | undefined,
+      getDeletedContributions: getDeletedContributions as () => Contribution[],
+      restoreContributor,
+      restoreContribution,
       totalSlices,
       mostRecentContribution,
       vestedEquityData,
@@ -294,6 +443,8 @@ export function SlicingPieProvider({
       clearAllData,
       hasData,
       hasSampleData,
+      activityEvents,
+      getRecentActivityEvents,
       isLoading,
     }),
     [
@@ -305,11 +456,15 @@ export function SlicingPieProvider({
       updateContributor,
       removeContributor,
       getContributorById,
+      getDeletedContributors,
       contributions,
       addContribution,
       updateContribution,
       removeContribution,
       getContributionById,
+      getDeletedContributions,
+      restoreContributor,
+      restoreContribution,
       totalSlices,
       mostRecentContribution,
       vestedEquityData,
@@ -318,6 +473,8 @@ export function SlicingPieProvider({
       clearAllData,
       hasData,
       hasSampleData,
+      activityEvents,
+      getRecentActivityEvents,
       isLoading,
     ]
   );

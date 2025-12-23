@@ -18,6 +18,14 @@ export interface UseEntitiesOptions {
 }
 
 /**
+ * Soft deletable entity interface
+ */
+export interface SoftDeletableEntity {
+  deletedAt?: string;
+  deletedWithParent?: string;
+}
+
+/**
  * Return type for useEntities hook
  */
 export interface UseEntitiesReturn<T extends Entity> {
@@ -25,7 +33,11 @@ export interface UseEntitiesReturn<T extends Entity> {
   add: (data: Omit<T, keyof BaseEntity>) => T;
   update: (id: string, data: Partial<Omit<T, keyof BaseEntity>>) => T | null;
   remove: (id: string) => boolean;
+  softDelete: (id: string, parentId?: string) => boolean;
+  restore: (id: string) => boolean;
   getById: (id: string) => T | undefined;
+  getActive: () => T[];
+  getDeleted: () => T[];
   clear: () => void;
   isLoading: boolean;
   error: string | null;
@@ -109,7 +121,7 @@ export function useEntities<T extends Entity>(
   );
 
   /**
-   * Remove an entity by id
+   * Remove an entity by id (hard delete)
    * Returns true if entity was found and removed
    */
   const remove = useCallback(
@@ -131,6 +143,77 @@ export function useEntities<T extends Entity>(
     },
     [setEntities]
   );
+
+  /**
+   * Soft delete an entity by id (sets deletedAt timestamp)
+   * @param id - Entity ID to soft delete
+   * @param parentId - Optional parent ID for cascade deletions
+   * Returns true if entity was found and soft-deleted
+   */
+  const softDelete = useCallback(
+    (id: string, parentId?: string): boolean => {
+      let found = false;
+
+      setEntities((prev) =>
+        prev.map((entity) => {
+          if (entity.id === id && !(entity as T & SoftDeletableEntity).deletedAt) {
+            found = true;
+            return {
+              ...entity,
+              deletedAt: getCurrentTimestamp(),
+              ...(parentId ? { deletedWithParent: parentId } : {}),
+              updatedAt: getCurrentTimestamp(),
+            };
+          }
+          return entity;
+        })
+      );
+
+      return found;
+    },
+    [setEntities]
+  );
+
+  /**
+   * Restore a soft-deleted entity by id (clears deletedAt)
+   * Returns true if entity was found and restored
+   */
+  const restore = useCallback(
+    (id: string): boolean => {
+      let found = false;
+
+      setEntities((prev) =>
+        prev.map((entity) => {
+          if (entity.id === id && (entity as T & SoftDeletableEntity).deletedAt) {
+            found = true;
+            const { deletedAt: _deletedAt, deletedWithParent: _deletedWithParent, ...rest } = entity as T & SoftDeletableEntity;
+            return {
+              ...rest,
+              updatedAt: getCurrentTimestamp(),
+            } as T;
+          }
+          return entity;
+        })
+      );
+
+      return found;
+    },
+    [setEntities]
+  );
+
+  /**
+   * Get all active (non-deleted) entities
+   */
+  const getActive = useCallback((): T[] => {
+    return entities.filter((entity) => !(entity as T & SoftDeletableEntity).deletedAt);
+  }, [entities]);
+
+  /**
+   * Get all soft-deleted entities
+   */
+  const getDeleted = useCallback((): T[] => {
+    return entities.filter((entity) => !!(entity as T & SoftDeletableEntity).deletedAt);
+  }, [entities]);
 
   /**
    * Get an entity by id
@@ -155,12 +238,16 @@ export function useEntities<T extends Entity>(
       add,
       update,
       remove,
+      softDelete,
+      restore,
       getById,
+      getActive,
+      getDeleted,
       clear,
       isLoading,
       error,
     }),
-    [entities, add, update, remove, getById, clear, isLoading, error]
+    [entities, add, update, remove, softDelete, restore, getById, getActive, getDeleted, clear, isLoading, error]
   );
 }
 

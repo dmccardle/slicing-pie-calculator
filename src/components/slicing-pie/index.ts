@@ -4,3 +4,8 @@ export { ContributorForm } from "./ContributorForm";
 export { ContributionForm } from "./ContributionForm";
 export { ContributionRow } from "./ContributionRow";
 export { OnboardingModal } from "./OnboardingModal";
+export { DeletedContributorCard } from "./DeletedContributorCard";
+export { DeletedContributionRow } from "./DeletedContributionRow";
+export { DeletedItemsList } from "./DeletedItemsList";
+export { RestoreButton } from "./RestoreButton";
+export { ActivityLog } from "./ActivityLog";

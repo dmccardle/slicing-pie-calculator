@@ -365,7 +365,10 @@ export default function ContributionsPage() {
       >
         <div className="space-y-4">
           <p className="text-gray-600">
-            Are you sure you want to delete this contribution? This action cannot be undone.
+            Are you sure you want to delete this contribution?
+          </p>
+          <p className="text-sm text-gray-500">
+            This will remove it from equity calculations. You can restore it later from Deleted Items.
           </p>
           <div className="flex justify-end gap-3">
             <Button
