@@ -8,7 +8,7 @@ import type {
   PDFReportData,
   ContributorSummaryRow,
   ContributionDetailRow,
-  VestingProjectionRow,
+  VestingScheduleRow,
 } from "@/types";
 import type {
   Company,
@@ -246,16 +246,11 @@ export function formatContributionDetails(
 }
 
 /**
- * Calculate vesting projections for all contributors
- * Generates projections at 6-month intervals for 2 years
+ * Generate vesting schedule for all contributors with vesting configured
  */
-export function calculateVestingProjections(
-  contributors: Contributor[],
-  contributions: Contribution[]
-): VestingProjectionRow[] {
-  const projections: VestingProjectionRow[] = [];
-  const today = new Date();
-
+export function generateVestingSchedule(
+  contributors: Contributor[]
+): VestingScheduleRow[] {
   // Get contributors with vesting configured
   const contributorsWithVesting = contributors.filter(
     (c) => c.vesting && !c.deletedAt
@@ -265,45 +260,26 @@ export function calculateVestingProjections(
     return [];
   }
 
-  // Calculate totals per contributor
-  const contributorSlices = new Map<string, number>();
-  contributions
-    .filter((c) => !c.deletedAt)
-    .forEach((c) => {
-      const current = contributorSlices.get(c.contributorId) || 0;
-      contributorSlices.set(c.contributorId, current + c.slices);
-    });
+  return contributorsWithVesting.map((contributor) => {
+    const vesting = contributor.vesting!;
+    const startDate = new Date(vesting.startDate + "T00:00:00");
 
-  // Generate projections at 6-month intervals
-  const intervals = [6, 12, 18, 24];
+    // Calculate cliff end date
+    const cliffEndDate = new Date(startDate);
+    cliffEndDate.setMonth(cliffEndDate.getMonth() + vesting.cliffMonths);
 
-  for (const months of intervals) {
-    const projectionDate = new Date(today);
-    projectionDate.setMonth(projectionDate.getMonth() + months);
+    // Calculate vesting end date
+    const vestingEndDate = new Date(startDate);
+    vestingEndDate.setMonth(vestingEndDate.getMonth() + vesting.vestingMonths);
 
-    for (const contributor of contributorsWithVesting) {
-      const totalSlices = contributorSlices.get(contributor.id) || 0;
-      if (totalSlices === 0) continue;
-
-      const vestingStatus = calculateVestingStatus(
-        contributor.vesting,
-        totalSlices,
-        projectionDate
-      );
-
-      if (vestingStatus) {
-        projections.push({
-          date: formatDate(projectionDate.toISOString().split("T")[0]),
-          contributorName: contributor.name,
-          vestedSlices: vestingStatus.vestedSlices,
-          unvestedSlices: vestingStatus.unvestedSlices,
-          vestedPercentage: vestingStatus.percentVested,
-        });
-      }
-    }
-  }
-
-  return projections;
+    return {
+      name: contributor.name,
+      cliffMonths: vesting.cliffMonths,
+      cliffEndDate: formatDate(cliffEndDate.toISOString().split("T")[0]),
+      vestingPeriodMonths: vesting.vestingMonths,
+      vestingEndDate: formatDate(vestingEndDate.toISOString().split("T")[0]),
+    };
+  });
 }
 
 /**
@@ -389,12 +365,9 @@ export function formatPDFReportData(
       .sort((a, b) => b.subtotalSlices - a.subtotalSlices);
   }
 
-  // Add vesting projections if enabled
+  // Add vesting schedule if enabled
   if (options.includeVesting) {
-    reportData.vestingProjections = calculateVestingProjections(
-      activeContributors,
-      activeContributions
-    );
+    reportData.vestingSchedule = generateVestingSchedule(activeContributors);
   }
 
   return reportData;

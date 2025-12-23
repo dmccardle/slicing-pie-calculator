@@ -529,26 +529,26 @@ export async function exportEnhancedPDF(
     }
   }
 
-  // ========== SECTION 5: Vesting Projections ==========
+  // ========== SECTION 5: Vesting Schedule ==========
   if (
     options.includeVesting &&
-    data.vestingProjections &&
-    data.vestingProjections.length > 0
+    data.vestingSchedule &&
+    data.vestingSchedule.length > 0
   ) {
     yPosition = checkPageBreak(doc, yPosition, 40);
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Vesting Projections", MARGIN_LEFT, yPosition);
+    doc.text("Vesting Schedule", MARGIN_LEFT, yPosition);
     yPosition += 8;
 
-    const vestingHeaders = ["Date", "Contributor", "Vested", "Unvested", "% Vested"];
-    const vestingRows = data.vestingProjections.map((p) => [
-      p.date,
-      p.contributorName,
-      formatNumberForPDF(p.vestedSlices),
-      formatNumberForPDF(p.unvestedSlices),
-      `${formatNumberForPDF(p.vestedPercentage, 1)}%`,
+    const vestingHeaders = ["Name", "Cliff", "Cliff End", "Vesting Period", "Fully Vested"];
+    const vestingRows = data.vestingSchedule.map((row) => [
+      row.name,
+      `${row.cliffMonths} mo`,
+      row.cliffEndDate,
+      `${row.vestingPeriodMonths} mo`,
+      row.vestingEndDate,
     ]);
 
     autoTable(doc, {

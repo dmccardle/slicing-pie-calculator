@@ -81,23 +81,23 @@ export interface ContributorContributionsSection {
 }
 
 /**
- * Row for the vesting projections table
+ * Row for the vesting schedule table
  */
-export interface VestingProjectionRow {
-  /** Projection date (formatted string) */
-  date: string;
-
+export interface VestingScheduleRow {
   /** Contributor name */
-  contributorName: string;
+  name: string;
 
-  /** Projected vested slices at this date */
-  vestedSlices: number;
+  /** Cliff period in months */
+  cliffMonths: number;
 
-  /** Projected unvested slices at this date */
-  unvestedSlices: number;
+  /** Date when cliff period ends */
+  cliffEndDate: string;
 
-  /** Vested percentage at this date */
-  vestedPercentage: number;
+  /** Total vesting period in months */
+  vestingPeriodMonths: number;
+
+  /** Date when fully vested */
+  vestingEndDate: string;
 }
 
 /**
@@ -125,8 +125,8 @@ export interface PDFReportData {
   /** Contributions breakdown sections (optional) */
   contributionsSections?: ContributorContributionsSection[];
 
-  /** Vesting projections (optional) */
-  vestingProjections?: VestingProjectionRow[];
+  /** Vesting schedule rows (optional) */
+  vestingSchedule?: VestingScheduleRow[];
 }
 
 /**

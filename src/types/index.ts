@@ -8,7 +8,7 @@ export type {
   ContributorSummaryRow,
   ContributionDetailRow,
   ContributorContributionsSection,
-  VestingProjectionRow,
+  VestingScheduleRow,
   PDFReportData,
 } from "./pdfExport";
 export { DEFAULT_PDF_EXPORT_OPTIONS } from "./pdfExport";
