@@ -198,11 +198,10 @@ export default function ContributorsPage() {
           <p className="text-gray-600">
             Are you sure you want to delete{" "}
             <span className="font-semibold">{contributorToDelete?.name}</span>?
-            This action cannot be undone.
           </p>
           <p className="text-sm text-gray-500">
-            Note: All contributions associated with this contributor will remain
-            in the system but will no longer be linked to a contributor.
+            This will also remove all their contributions from equity calculations.
+            You can restore them later from Deleted Items.
           </p>
           <div className="flex justify-end gap-3 pt-4">
             <Button
