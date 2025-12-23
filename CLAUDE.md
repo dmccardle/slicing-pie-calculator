@@ -291,6 +291,8 @@ To customize this template for your project:
 - localStorage via existing hooks (003-cliff-vesting-projections)
 - localStorage (via existing useLocalStorage hook) (004-company-valuation)
 - Browser localStorage (via existing useLocalStorage and useEntities hooks) (005-soft-deletion)
+- TypeScript 5.x (strict mode) + Next.js 16 (App Router), React 19, Anthropic Claude API (006-ai-tool-use)
+- N/A (no storage changes - localStorage unchanged) (006-ai-tool-use)
 
 ## Recent Changes
 - 001-template-core: Added TypeScript 5.x (strict mode) + Next.js 16 (App Router), React 19, Tailwind CSS 4, Recharts, xlsx, jsPDF

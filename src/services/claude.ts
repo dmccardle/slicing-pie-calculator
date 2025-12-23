@@ -19,6 +19,52 @@ import { MULTIPLIERS } from "@/utils/slicingPie";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 /**
+ * Tool definition for structured valuation suggestions
+ * This enables Claude to return structured data via tool use instead of free-form text
+ */
+const VALUATION_SUGGESTION_TOOL = {
+  name: "provide_valuation_suggestion",
+  description: `Provide a structured valuation suggestion for a contribution to the Slicing Pie equity model.
+Call this tool when the user describes a contribution that can be valued.
+Include all required fields to ensure the suggestion can be applied to the contribution form.`,
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      type: {
+        type: "string",
+        enum: ["time", "cash", "non-cash", "idea", "relationship"],
+        description:
+          "The contribution type. Use 'time' for hours worked, 'cash' for money invested, 'non-cash' for equipment/supplies, 'idea' for intellectual property, 'relationship' for network/sales connections.",
+      },
+      value: {
+        type: "number",
+        minimum: 0,
+        description:
+          "The numeric value. For 'time' contributions, this is hours worked. For all other types, this is the dollar amount.",
+      },
+      dollarValue: {
+        type: "number",
+        minimum: 0,
+        description:
+          "Optional dollar equivalent for ideas and relationships. Use when the value field represents something other than dollars.",
+      },
+      confidence: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+        description:
+          "Your confidence level in this valuation. Use 'low' when making assumptions, 'medium' for reasonable estimates, 'high' when the user provided clear details.",
+      },
+      reasoning: {
+        type: "string",
+        description:
+          "Brief explanation of how you arrived at this valuation. Include any assumptions made.",
+      },
+    },
+    required: ["type", "value", "confidence", "reasoning"],
+  },
+};
+
+/**
  * Build the system prompt for valuation assistance
  */
 function buildSystemPrompt(context: ValuationContext): string {
@@ -37,6 +83,11 @@ The Slicing Pie model tracks contributions as "slices" using these multipliers:
 - Contributor: ${context.contributorName} (hourly rate: $${context.contributorHourlyRate}/hr)
 ${context.contributorEquityPercentage !== undefined ? `- Current equity: ${context.contributorEquityPercentage.toFixed(1)}%` : ""}
 ${context.totalCompanySlices !== undefined ? `- Total company slices: ${context.totalCompanySlices.toLocaleString()}` : ""}
+${context.existingContributions && context.existingContributions.length > 0 ? `
+## This Contributor's Existing Contributions
+${context.existingContributions.map((c) => `- ${c.type}: ${c.type === "time" ? `${c.value} hours` : `$${c.value}`} (${c.slices.toLocaleString()} slices)`).join("\n")}
+
+Use this contribution history to provide more accurate and contextual suggestions. Consider patterns in their past contributions and how the new contribution fits with their existing work.` : ""}
 
 ## Your Role
 Help value contributions fairly by:
@@ -45,12 +96,15 @@ Help value contributions fairly by:
 3. Providing dollar value estimates for ideas/relationships
 4. Explaining your reasoning
 
-## Response Format
-When providing a valuation suggestion, include:
-- Suggested contribution type
-- Dollar value (for ideas/relationships) or hours/amount
-- Confidence level (low/medium/high)
-- Brief reasoning
+## IMPORTANT: Tool Usage
+When the user describes a contribution that can be valued, you MUST use the provide_valuation_suggestion tool to provide a structured suggestion. This ensures the user can easily apply your suggestion to their contribution form.
+
+Only respond with text (no tool call) when:
+- You need more information to make a suggestion
+- The user is asking a general question that doesn't require a valuation
+- The description is too vague to value with any confidence
+
+When you DO have enough information to suggest a valuation, ALWAYS call the provide_valuation_suggestion tool.
 
 Always be helpful and guide the user toward fair valuations.`;
 }
@@ -76,7 +130,10 @@ Be helpful and provide realistic market rates.`;
 }
 
 /**
- * Parse AI response for structured suggestion
+ * Parse AI response for structured suggestion (FALLBACK)
+ * This is now a fallback mechanism - tool use is the primary method.
+ * Used when the AI doesn't call the tool (e.g., asking clarifying questions)
+ * or when tool input validation fails.
  */
 function parseSuggestionFromResponse(content: string): AISuggestion | undefined {
   // Look for structured suggestion patterns in the response
@@ -133,6 +190,46 @@ function parseSuggestionFromResponse(content: string): AISuggestion | undefined 
 }
 
 /**
+ * Validate and extract AISuggestion from tool use input
+ * Returns undefined if validation fails
+ */
+function validateToolSuggestion(input: unknown): AISuggestion | undefined {
+  if (!input || typeof input !== "object") return undefined;
+
+  const data = input as Record<string, unknown>;
+
+  // Validate type
+  const validTypes = ["time", "cash", "non-cash", "idea", "relationship"];
+  if (typeof data.type !== "string" || !validTypes.includes(data.type)) {
+    return undefined;
+  }
+
+  // Validate value
+  if (typeof data.value !== "number" || data.value < 0) {
+    return undefined;
+  }
+
+  // Validate confidence
+  const validConfidence = ["low", "medium", "high"];
+  if (typeof data.confidence !== "string" || !validConfidence.includes(data.confidence)) {
+    return undefined;
+  }
+
+  // Validate reasoning
+  if (typeof data.reasoning !== "string" || data.reasoning.length < 1) {
+    return undefined;
+  }
+
+  return {
+    type: data.type as ContributionType,
+    value: data.value,
+    dollarValue: typeof data.dollarValue === "number" ? data.dollarValue : undefined,
+    reasoning: data.reasoning,
+    confidence: data.confidence as "low" | "medium" | "high",
+  };
+}
+
+/**
  * Parse hourly rate suggestion from response
  */
 function parseHourlyRateFromResponse(content: string): HourlyRateSuggestion | undefined {
@@ -169,15 +266,40 @@ function createAIError(type: AIErrorType, message: string): AIError {
 }
 
 /**
+ * Tool use response structure from Claude API
+ */
+interface ToolUseBlock {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: unknown;
+}
+
+/**
  * Make a request to the Claude API
+ * Supports optional tools parameter for structured outputs
  */
 async function callClaudeAPI(
   apiKey: string,
   model: AIModel,
   systemPrompt: string,
-  messages: { role: "user" | "assistant"; content: string }[]
-): Promise<{ content: string; error?: AIError }> {
+  messages: { role: "user" | "assistant"; content: string }[],
+  tools?: typeof VALUATION_SUGGESTION_TOOL[]
+): Promise<{ content: string; toolUse?: ToolUseBlock; error?: AIError }> {
   try {
+    // Build request body
+    const body: Record<string, unknown> = {
+      model,
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages,
+    };
+
+    // Add tools if provided
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+    }
+
     const response = await fetch(ANTHROPIC_API_URL, {
       method: "POST",
       headers: {
@@ -186,12 +308,7 @@ async function callClaudeAPI(
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -221,9 +338,19 @@ async function callClaudeAPI(
     }
 
     const data = await response.json();
-    const content = data.content?.[0]?.text || "";
 
-    return { content };
+    // Extract text content from response
+    const textBlock = data.content?.find(
+      (block: { type: string }) => block.type === "text"
+    );
+    const content = textBlock?.text || "";
+
+    // Extract tool use from response (if present)
+    const toolUseBlock = data.content?.find(
+      (block: { type: string }) => block.type === "tool_use"
+    ) as ToolUseBlock | undefined;
+
+    return { content, toolUse: toolUseBlock };
   } catch (err) {
     return {
       content: "",
@@ -237,6 +364,7 @@ async function callClaudeAPI(
 
 /**
  * Get a valuation suggestion from Claude
+ * Uses tool use for structured output with regex fallback
  */
 export async function getValuationSuggestion(
   apiKey: string,
@@ -261,7 +389,14 @@ export async function getValuationSuggestion(
     content: description,
   });
 
-  const { content, error } = await callClaudeAPI(apiKey, model, systemPrompt, messages);
+  // Call API with valuation suggestion tool
+  const { content, toolUse, error } = await callClaudeAPI(
+    apiKey,
+    model,
+    systemPrompt,
+    messages,
+    [VALUATION_SUGGESTION_TOOL]
+  );
 
   if (error) {
     return {
@@ -270,7 +405,17 @@ export async function getValuationSuggestion(
     };
   }
 
-  const suggestion = parseSuggestionFromResponse(content);
+  // Try to extract suggestion from tool use first (preferred)
+  let suggestion: AISuggestion | undefined;
+
+  if (toolUse && toolUse.name === "provide_valuation_suggestion") {
+    suggestion = validateToolSuggestion(toolUse.input);
+  }
+
+  // Fall back to regex parsing if tool use failed or wasn't called
+  if (!suggestion && content) {
+    suggestion = parseSuggestionFromResponse(content);
+  }
 
   return {
     message: content,
