@@ -47,12 +47,14 @@ export function getCliffDate(vesting: VestingConfig): string | null {
 
 /**
  * Get the full vest date for a contributor
+ * Full vest = start date + cliff period + vesting period
  * @param vesting - Vesting configuration
  * @returns ISO date string of full vest date
  */
 export function getFullVestDate(vesting: VestingConfig): string {
   const startDate = new Date(vesting.startDate);
-  startDate.setMonth(startDate.getMonth() + vesting.vestingMonths);
+  // Full vest is after both cliff AND vesting periods complete
+  startDate.setMonth(startDate.getMonth() + vesting.cliffMonths + vesting.vestingMonths);
   return startDate.toISOString().split('T')[0];
 }
 
@@ -90,6 +92,9 @@ export function calculateVestingStatus(
   const cliffDate = getCliffDate(contributor.vesting);
   const fullVestDate = getFullVestDate(contributor.vesting);
 
+  // Total months from start to fully vested = cliff + vesting period
+  const totalVestingMonths = cliffMonths + vestingMonths;
+
   const monthsElapsed = calculateMonthsDifference(startDate, currentDate);
 
   // Before start date
@@ -102,7 +107,7 @@ export function calculateVestingStatus(
       cliffDate,
       fullVestDate,
       monthsUntilCliff: cliffMonths - monthsElapsed,
-      monthsUntilFullVest: vestingMonths - monthsElapsed,
+      monthsUntilFullVest: totalVestingMonths - monthsElapsed,
     };
   }
 
@@ -116,12 +121,12 @@ export function calculateVestingStatus(
       cliffDate,
       fullVestDate,
       monthsUntilCliff: cliffMonths - monthsElapsed,
-      monthsUntilFullVest: vestingMonths - monthsElapsed,
+      monthsUntilFullVest: totalVestingMonths - monthsElapsed,
     };
   }
 
-  // Fully vested
-  if (monthsElapsed >= vestingMonths) {
+  // Fully vested (after cliff + vesting period)
+  if (monthsElapsed >= totalVestingMonths) {
     return {
       state: 'fullyVested',
       percentVested: 100,
@@ -135,8 +140,9 @@ export function calculateVestingStatus(
   }
 
   // Vesting in progress (post-cliff, pre-full vest)
-  // Linear vesting: percent = monthsElapsed / vestingMonths
-  const percentVested = Math.min(100, (monthsElapsed / vestingMonths) * 100);
+  // Linear vesting based on time since cliff ended
+  const monthsSinceCliff = monthsElapsed - cliffMonths;
+  const percentVested = Math.min(100, (monthsSinceCliff / vestingMonths) * 100);
   const vestedSlices = Math.floor(totalSlices * (percentVested / 100));
 
   return {
@@ -147,7 +153,7 @@ export function calculateVestingStatus(
     cliffDate,
     fullVestDate,
     monthsUntilCliff: 0,
-    monthsUntilFullVest: vestingMonths - monthsElapsed,
+    monthsUntilFullVest: totalVestingMonths - monthsElapsed,
   };
 }
 
