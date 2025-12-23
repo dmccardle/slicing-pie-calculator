@@ -179,7 +179,7 @@ export function LocalStorageBanner({
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 rounded-md border border-green-300 bg-green-100 px-2 py-1 text-sm font-medium text-green-700 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="flex-shrink-0 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
           >
             Dismiss
           </button>
