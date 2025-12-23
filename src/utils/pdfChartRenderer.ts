@@ -1,9 +1,10 @@
 /**
  * PDF Chart Renderer Utility
- * Converts rendered chart DOM elements to images for PDF embedding
+ * Converts rendered chart SVG elements to images for PDF embedding
+ *
+ * Uses direct SVG-to-Canvas conversion instead of html2canvas for reliability.
+ * This approach works regardless of element visibility or DOM position.
  */
-
-import html2canvas from "html2canvas";
 
 /**
  * Options for rendering a chart to an image
@@ -33,12 +34,17 @@ const DEFAULT_RENDER_OPTIONS: Required<ChartRenderOptions> = {
 };
 
 /**
- * Renders a chart DOM element to a PNG data URL
+ * Renders a chart DOM element to a PNG data URL by converting SVG to Canvas.
  *
- * @param element - DOM element containing the chart
+ * This approach is more reliable than html2canvas because:
+ * 1. Works regardless of element visibility or position
+ * 2. Directly serializes SVG without depending on browser rendering
+ * 3. Handles off-screen elements properly
+ *
+ * @param element - DOM element containing the chart (must have an SVG child)
  * @param options - Render configuration
  * @returns PNG data URL string (base64 encoded)
- * @throws Error if element is null or not ready for capture
+ * @throws Error if element is null, has no SVG, or conversion fails
  */
 export async function renderChartToImage(
   element: HTMLElement | null,
@@ -54,39 +60,78 @@ export async function renderChartToImage(
     ...options,
   };
 
-  // Check if element has content (SVG or child elements)
+  // Find SVG element
   const svgElement = element.querySelector("svg");
-  if (!svgElement && element.children.length === 0) {
-    throw new Error("Chart not ready for capture");
+  if (!svgElement) {
+    throw new Error("No SVG found in chart element");
   }
 
+  // Get SVG dimensions
+  const svgWidth = svgElement.width?.baseVal?.value || renderOptions.width;
+  const svgHeight = svgElement.height?.baseVal?.value || renderOptions.height;
+
   try {
-    // Ensure element is in the viewport for capture
-    const rect = element.getBoundingClientRect();
+    // Clone SVG to avoid modifying the original
+    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
 
-    const canvas = await html2canvas(element, {
-      backgroundColor: renderOptions.backgroundColor,
-      scale: renderOptions.scale,
-      logging: false,
-      width: renderOptions.width,
-      height: renderOptions.height,
-      useCORS: true,
-      allowTaint: true,
-      // Capture from element's actual position
-      x: rect.left < 0 ? rect.left : 0,
-      y: rect.top < 0 ? rect.top : 0,
-      scrollX: 0,
-      scrollY: 0,
-      // Ensure we capture the element even if off-screen
-      windowWidth: Math.max(document.documentElement.clientWidth, renderOptions.width + Math.abs(rect.left)),
-      windowHeight: Math.max(document.documentElement.clientHeight, renderOptions.height + Math.abs(rect.top)),
-    });
+    // Ensure SVG has explicit dimensions
+    svgClone.setAttribute("width", String(svgWidth));
+    svgClone.setAttribute("height", String(svgHeight));
 
+    // Add xmlns if not present (required for serialization)
+    if (!svgClone.getAttribute("xmlns")) {
+      svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    }
+
+    // Serialize SVG to string
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+
+    // Create blob and URL
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    // Load SVG as image
+    const img = await loadImage(url);
+
+    // Create high-DPI canvas
+    const canvas = document.createElement("canvas");
+    const scale = renderOptions.scale;
+    canvas.width = svgWidth * scale;
+    canvas.height = svgHeight * scale;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      URL.revokeObjectURL(url);
+      throw new Error("Failed to get canvas context");
+    }
+
+    // Fill background
+    ctx.fillStyle = renderOptions.backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Scale for high-DPI and draw
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+
+    // Cleanup and return
+    URL.revokeObjectURL(url);
     return canvas.toDataURL("image/png");
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Failed to render chart: ${errorMessage}`);
   }
+}
+
+/**
+ * Helper to load an image from URL as a Promise
+ */
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to load SVG as image"));
+    img.src = url;
+  });
 }
 
 /**
