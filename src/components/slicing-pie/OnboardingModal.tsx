@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { ImportConfirmModal } from "./ImportConfirmModal";
 import { useExport } from "@/hooks/useExport";
-import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, PlusCircleIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
 interface SlicingPieExportData {
   version: string;
@@ -154,6 +154,7 @@ export function OnboardingModal({
               onClose();
             }}
           >
+            <PlusCircleIcon className="h-5 w-5" />
             Start Empty
             <span className="ml-2 text-xs opacity-75">
               Add your own contributors
@@ -167,6 +168,7 @@ export function OnboardingModal({
               onClose();
             }}
           >
+            <SparklesIcon className="h-5 w-5" />
             Load Sample Data
             <span className="ml-2 text-xs opacity-75">
               See the platform in action
