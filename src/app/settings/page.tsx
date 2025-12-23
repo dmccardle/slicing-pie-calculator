@@ -10,6 +10,8 @@ import { ValuationConfig, ValuationHistory } from "@/components/valuation";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import { formatSlices, formatCurrency, formatEquityPercentage } from "@/utils/slicingPie";
 import { useAISettings } from "@/hooks/useAISettings";
+import { useValuation } from "@/hooks/useValuation";
+import type { ValuationConfig as ValuationConfigType, ValuationHistoryEntry } from "@/types/valuation";
 import { AI_MODELS, type AIModel } from "@/types/ai";
 import { testApiKey } from "@/services/claude";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
@@ -20,6 +22,8 @@ interface SlicingPieExportData {
   company: Company;
   contributors: Contributor[];
   contributions: Contribution[];
+  valuationConfig?: ValuationConfigType;
+  valuationHistory?: ValuationHistoryEntry[];
 }
 
 function validateImportData(data: unknown): data is SlicingPieExportData {
@@ -95,6 +99,13 @@ export default function SettingsPage() {
     setModelPreference,
   } = useAISettings();
 
+  // Valuation data for export/import
+  const {
+    config: valuationConfig,
+    history: valuationHistory,
+    importValuationData,
+  } = useValuation();
+
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -159,6 +170,14 @@ export default function SettingsPage() {
         contributions: pendingImportData.contributions,
       });
 
+      // Import valuation data if present
+      if (pendingImportData.valuationConfig || pendingImportData.valuationHistory) {
+        importValuationData({
+          config: pendingImportData.valuationConfig,
+          history: pendingImportData.valuationHistory,
+        });
+      }
+
       setImportSuccess(true);
       setTimeout(() => setImportSuccess(false), 3000);
     } catch {
@@ -194,6 +213,8 @@ export default function SettingsPage() {
     company,
     contributors,
     contributions,
+    valuationConfig,
+    valuationHistory,
   };
 
   // Excel sheets for Slicing Pie

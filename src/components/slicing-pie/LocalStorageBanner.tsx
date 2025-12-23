@@ -4,7 +4,9 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImportConfirmModal } from "./ImportConfirmModal";
 import { useExport } from "@/hooks/useExport";
+import { useValuation } from "@/hooks/useValuation";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
+import type { ValuationConfig, ValuationHistoryEntry } from "@/types/valuation";
 import {
   ExclamationTriangleIcon,
   ArrowDownTrayIcon,
@@ -19,6 +21,8 @@ interface SlicingPieExportData {
   company: Company;
   contributors: Contributor[];
   contributions: Contribution[];
+  valuationConfig?: ValuationConfig;
+  valuationHistory?: ValuationHistoryEntry[];
 }
 
 interface LocalStorageBannerProps {
@@ -71,6 +75,13 @@ export function LocalStorageBanner({
   const { status, exportJSON, importJSON } = useExport();
   const isProcessing = status === "exporting";
 
+  // Valuation data for export/import
+  const {
+    config: valuationConfig,
+    history: valuationHistory,
+    importValuationData,
+  } = useValuation();
+
   // Check sessionStorage on mount
   useEffect(() => {
     const dismissed = sessionStorage.getItem(DISMISSED_KEY) === "true";
@@ -89,6 +100,8 @@ export function LocalStorageBanner({
       company,
       contributors,
       contributions,
+      valuationConfig,
+      valuationHistory,
     };
     exportJSON(exportData, "slicing-pie-backup");
     setFeedback({ type: "success", text: "Data exported successfully!" });
@@ -115,6 +128,15 @@ export function LocalStorageBanner({
   const handleConfirmImport = () => {
     if (pendingImportData) {
       onImport(pendingImportData);
+
+      // Import valuation data if present
+      if (pendingImportData.valuationConfig || pendingImportData.valuationHistory) {
+        importValuationData({
+          config: pendingImportData.valuationConfig,
+          history: pendingImportData.valuationHistory,
+        });
+      }
+
       setShowImportModal(false);
       setPendingImportData(null);
       setFeedback({ type: "success", text: "Data imported successfully!" });
