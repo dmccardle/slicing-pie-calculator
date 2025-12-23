@@ -97,30 +97,46 @@ export default function ProjectionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Date Selector */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Projections</h1>
         <p className="mt-1 text-sm text-gray-600">
           View future equity distribution based on vesting schedules
         </p>
-      </div>
-
-      {/* Date Selector & Options */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">Projections as of:</span>
+        <div className="mt-4">
           <DateSelector
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Show unvested</span>
-          <Toggle
-            checked={showUnvested}
-            onChange={setShowUnvested}
-          />
-        </div>
       </div>
+
+      {/* Projection Chart */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Projected Equity Distribution
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Show unvested</span>
+              <Toggle
+                checked={showUnvested}
+                onChange={setShowUnvested}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardBody>
+          {projectedData.length === 0 ? (
+            <p className="text-center text-gray-500 py-12">
+              No contributors with equity. Add contributors and contributions to see projections.
+            </p>
+          ) : (
+            <ProjectionChart data={projectedData} showUnvested={showUnvested} />
+          )}
+        </CardBody>
+      </Card>
 
       {/* Summary Stats */}
       <div className={`grid gap-4 ${showUnvested ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"}`}>
@@ -214,24 +230,6 @@ export default function ProjectionsPage() {
           </CardBody>
         </Card>
       )}
-
-      {/* Projection Chart */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Projected Equity Distribution
-          </h2>
-        </CardHeader>
-        <CardBody>
-          {projectedData.length === 0 ? (
-            <p className="text-center text-gray-500 py-12">
-              No contributors with equity. Add contributors and contributions to see projections.
-            </p>
-          ) : (
-            <ProjectionChart data={projectedData} showUnvested={showUnvested} />
-          )}
-        </CardBody>
-      </Card>
 
       {/* Contributor Breakdown */}
       <Card>

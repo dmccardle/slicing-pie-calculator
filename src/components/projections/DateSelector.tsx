@@ -126,7 +126,10 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Label */}
+      <p className="text-sm font-medium text-gray-700">Showing projections as of:</p>
+
       {/* Date display with custom picker */}
       <div className="relative inline-block" ref={pickerRef}>
         {/* Clickable date display */}
