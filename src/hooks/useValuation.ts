@@ -177,6 +177,21 @@ export function useValuation() {
     setHistory([]);
   }, [setHistory]);
 
+  /**
+   * Import valuation data (for bulk restore from backup)
+   */
+  const importValuationData = useCallback(
+    (data: { config?: ValuationConfig; history?: ValuationHistoryEntry[] }) => {
+      if (data.config) {
+        setConfig(data.config);
+      }
+      if (data.history) {
+        setHistory(data.history);
+      }
+    },
+    [setConfig, setHistory]
+  );
+
   // ============================================================================
   // Computed Values
   // ============================================================================
@@ -225,6 +240,9 @@ export function useValuation() {
     getHistory,
     restoreFromHistory,
     clearHistory,
+
+    // Import
+    importValuationData,
   };
 }
 

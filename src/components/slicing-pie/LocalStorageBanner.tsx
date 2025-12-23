@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { ImportConfirmModal } from "./ImportConfirmModal";
 import { useExport } from "@/hooks/useExport";
+import { useValuation } from "@/hooks/useValuation";
+import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
+import type { ValuationConfig, ValuationHistoryEntry } from "@/types/valuation";
 import {
   ExclamationTriangleIcon,
   ArrowDownTrayIcon,
@@ -19,6 +22,8 @@ interface SlicingPieExportData {
   company: Company;
   contributors: Contributor[];
   contributions: Contribution[];
+  valuationConfig?: ValuationConfig;
+  valuationHistory?: ValuationHistoryEntry[];
 }
 
 interface LocalStorageBannerProps {
@@ -71,6 +76,16 @@ export function LocalStorageBanner({
   const { status, exportJSON, importJSON } = useExport();
   const isProcessing = status === "exporting";
 
+  // Feature flags
+  const { valuationActive, vestingActive } = useFeatureFlagsContext();
+
+  // Valuation data for export/import (only when feature is active)
+  const {
+    config: valuationConfig,
+    history: valuationHistory,
+    importValuationData,
+  } = useValuation();
+
   // Check sessionStorage on mount
   useEffect(() => {
     const dismissed = sessionStorage.getItem(DISMISSED_KEY) === "true";
@@ -83,12 +98,18 @@ export function LocalStorageBanner({
   };
 
   const handleExport = () => {
+    // Strip vesting from contributors if vesting feature is not active
+    const contributorsForExport = vestingActive
+      ? contributors
+      : contributors.map(({ vesting: _vesting, ...rest }) => rest);
+
     const exportData: SlicingPieExportData = {
       version: "1.0.0",
       exportedAt: new Date().toISOString(),
       company,
-      contributors,
+      contributors: contributorsForExport,
       contributions,
+      ...(valuationActive && { valuationConfig, valuationHistory }),
     };
     exportJSON(exportData, "slicing-pie-backup");
     setFeedback({ type: "success", text: "Data exported successfully!" });
@@ -115,6 +136,15 @@ export function LocalStorageBanner({
   const handleConfirmImport = () => {
     if (pendingImportData) {
       onImport(pendingImportData);
+
+      // Import valuation data if present
+      if (pendingImportData.valuationConfig || pendingImportData.valuationHistory) {
+        importValuationData({
+          config: pendingImportData.valuationConfig,
+          history: pendingImportData.valuationHistory,
+        });
+      }
+
       setShowImportModal(false);
       setPendingImportData(null);
       setFeedback({ type: "success", text: "Data imported successfully!" });
@@ -155,7 +185,7 @@ export function LocalStorageBanner({
                 disabled={isProcessing}
               >
                 <ArrowDownTrayIcon className="h-4 w-4" />
-                Export JSON
+                Export Data (.json file)
               </Button>
               <Button
                 variant="secondary"
@@ -164,7 +194,7 @@ export function LocalStorageBanner({
                 disabled={isProcessing}
               >
                 <ArrowUpTrayIcon className="h-4 w-4" />
-                Import JSON
+                Import Data (.json file)
               </Button>
             </div>
             {feedback && (
@@ -186,39 +216,14 @@ export function LocalStorageBanner({
         </div>
       </div>
 
-      <Modal
+      <ImportConfirmModal
         isOpen={showImportModal}
         onClose={handleCancelImport}
-        title="Confirm Import"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            This will replace all your current data with the imported file.
-          </p>
-          {pendingImportData && (
-            <div className="rounded-lg bg-gray-50 p-3 text-sm">
-              <p className="font-medium text-gray-900">
-                {pendingImportData.company.name || "Unnamed Company"}
-              </p>
-              <p className="text-gray-600">
-                {pendingImportData.contributors.length} contributor(s),{" "}
-                {pendingImportData.contributions.length} contribution(s)
-              </p>
-            </div>
-          )}
-          <p className="text-sm text-amber-600">
-            Your current data will be permanently replaced.
-          </p>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={handleCancelImport}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleConfirmImport}>
-              Import
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={handleConfirmImport}
+        onExportCurrent={handleExport}
+        importData={pendingImportData}
+        hasExistingData={contributors.length > 0 || contributions.length > 0}
+      />
     </>
   );
 }
