@@ -77,6 +77,11 @@ interface SlicingPieContextValue {
   // Data management
   loadSampleData: () => void;
   clearAllData: () => void;
+  importData: (data: {
+    company: Company;
+    contributors: Contributor[];
+    contributions: Contribution[];
+  }) => void;
   hasData: boolean;
   hasSampleData: boolean;
 
@@ -121,6 +126,7 @@ export function SlicingPieProvider({
     getActive: getActiveContributors,
     getDeleted: getDeletedContributors,
     clear: clearContributors,
+    setAll: setAllContributors,
     isLoading: contributorsLoading,
   } = useEntities<Entity<Omit<Contributor, "id" | "createdAt" | "updatedAt">>>(
     "slicingPie_contributors"
@@ -138,6 +144,7 @@ export function SlicingPieProvider({
     getActive: getActiveContributions,
     getDeleted: getDeletedContributions,
     clear: clearContributions,
+    setAll: setAllContributions,
     isLoading: contributionsLoading,
   } = useEntities<Entity<Omit<Contribution, "id" | "createdAt" | "updatedAt">>>(
     "slicingPie_contributions"
@@ -410,6 +417,40 @@ export function SlicingPieProvider({
     clearContributions();
   }, [setCompany, clearContributors, clearContributions]);
 
+  // Import data (bulk replace to avoid race conditions)
+  const importData = useCallback(
+    (data: {
+      company: Company;
+      contributors: Contributor[];
+      contributions: Contribution[];
+    }) => {
+      // Set company directly
+      setCompany(data.company);
+
+      // Transform contributors to include timestamps if missing
+      const now = new Date().toISOString();
+      const contributorsWithTimestamps = data.contributors.map((c) => ({
+        ...c,
+        id: c.id || `contributor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdAt: c.createdAt || now,
+        updatedAt: c.updatedAt || now,
+      })) as Entity<Omit<Contributor, "id" | "createdAt" | "updatedAt">>[];
+
+      // Transform contributions to include timestamps if missing
+      const contributionsWithTimestamps = data.contributions.map((c) => ({
+        ...c,
+        id: c.id || `contribution_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdAt: c.createdAt || now,
+        updatedAt: c.updatedAt || now,
+      })) as Entity<Omit<Contribution, "id" | "createdAt" | "updatedAt">>[];
+
+      // Bulk set all entities at once (avoids race condition)
+      setAllContributors(contributorsWithTimestamps);
+      setAllContributions(contributionsWithTimestamps);
+    },
+    [setCompany, setAllContributors, setAllContributions]
+  );
+
   const isLoading = companyLoading || contributorsLoading || contributionsLoading;
 
   const value = useMemo(
@@ -441,6 +482,7 @@ export function SlicingPieProvider({
       vestingSummary,
       loadSampleData,
       clearAllData,
+      importData,
       hasData,
       hasSampleData,
       activityEvents,
@@ -471,6 +513,7 @@ export function SlicingPieProvider({
       vestingSummary,
       loadSampleData,
       clearAllData,
+      importData,
       hasData,
       hasSampleData,
       activityEvents,

@@ -153,10 +153,7 @@ export default function Dashboard() {
     loadSampleData,
     vestedEquityData,
     vestingSummary,
-    updateCompany,
-    addContributor,
-    addContribution,
-    clearAllData,
+    importData,
   } = useSlicingPieContext();
 
   const { vestingEnabled } = useFeatureFlagsContext();
@@ -221,34 +218,23 @@ export default function Dashboard() {
   };
 
   const handleImport = (data: SlicingPieExportData) => {
-    // Clear existing data first
-    clearAllData();
-
-    // Update company
-    updateCompany(data.company);
-
-    // Import contributors
-    data.contributors.forEach((contributor) => {
-      addContributor({
-        name: contributor.name,
-        email: contributor.email,
-        hourlyRate: contributor.hourlyRate,
-        active: contributor.active ?? true,
-      });
+    // Use bulk import to avoid race condition with debounced localStorage writes
+    importData({
+      company: data.company,
+      contributors: data.contributors,
+      contributions: data.contributions,
     });
+  };
 
-    // Import contributions
-    data.contributions.forEach((contribution) => {
-      addContribution({
-        contributorId: contribution.contributorId,
-        type: contribution.type,
-        value: contribution.value,
-        description: contribution.description,
-        date: contribution.date,
-        multiplier: contribution.multiplier,
-        slices: contribution.slices,
-      });
+  // Handler for onboarding import - reuse the main import handler
+  const handleOnboardingImport = (data: { company: { name: string }; contributors: unknown[]; contributions: unknown[] }) => {
+    importData({
+      company: data.company as Company,
+      contributors: data.contributors as Contributor[],
+      contributions: data.contributions as Contribution[],
     });
+    // Close onboarding modal and mark as dismissed
+    handleDismissOnboarding();
   };
 
   // Listen for loadSampleData event from EmptyState
@@ -278,6 +264,7 @@ export default function Dashboard() {
         onClose={handleDismissOnboarding}
         onLoadSampleData={handleLoadSampleData}
         onStartEmpty={handleDismissOnboarding}
+        onImportData={handleOnboardingImport}
       />
 
       {/* Local Storage Warning Banner */}

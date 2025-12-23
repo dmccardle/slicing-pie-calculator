@@ -5,6 +5,7 @@ import { useSlicingPieContext } from "@/context/SlicingPieContext";
 import { useFeatureFlagsContext } from "@/context/FeatureFlagsContext";
 import { Card, CardHeader, CardBody, CardFooter, Button, Input, Modal, Select, Toggle } from "@/components/ui";
 import { ExportPanel } from "@/components/export";
+import { ImportConfirmModal } from "@/components/slicing-pie";
 import { ValuationConfig, ValuationHistory } from "@/components/valuation";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import { formatSlices, formatCurrency, formatEquityPercentage } from "@/utils/slicingPie";
@@ -65,12 +66,13 @@ export default function SettingsPage() {
     clearAllData,
     loadSampleData,
     hasSampleData,
-    addContributor,
-    addContribution,
+    importData,
     isLoading,
   } = useSlicingPieContext();
 
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [pendingImportData, setPendingImportData] = useState<SlicingPieExportData | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
 
@@ -128,7 +130,8 @@ export default function SettingsPage() {
     setShowClearModal(false);
   };
 
-  const handleImport = (data: unknown) => {
+  // Handle import - show confirmation modal first
+  const handleImportSelect = (data: unknown) => {
     setImportError(null);
     setImportSuccess(false);
 
@@ -139,41 +142,49 @@ export default function SettingsPage() {
       return;
     }
 
+    // Show confirmation modal
+    setPendingImportData(data);
+    setShowImportConfirm(true);
+  };
+
+  // Confirm import - actually perform the import
+  const handleConfirmImport = () => {
+    if (!pendingImportData) return;
+
     try {
-      // Clear existing data first
-      clearAllData();
-
-      // Update company
-      updateCompany(data.company);
-
-      // Import contributors
-      data.contributors.forEach((contributor) => {
-        addContributor({
-          name: contributor.name,
-          email: contributor.email,
-          hourlyRate: contributor.hourlyRate,
-          active: contributor.active ?? true,
-        });
-      });
-
-      // Import contributions
-      data.contributions.forEach((contribution) => {
-        addContribution({
-          contributorId: contribution.contributorId,
-          type: contribution.type,
-          value: contribution.value,
-          description: contribution.description,
-          date: contribution.date,
-          multiplier: contribution.multiplier,
-          slices: contribution.slices,
-        });
+      // Use bulk import to avoid race condition with debounced localStorage writes
+      importData({
+        company: pendingImportData.company,
+        contributors: pendingImportData.contributors,
+        contributions: pendingImportData.contributions,
       });
 
       setImportSuccess(true);
       setTimeout(() => setImportSuccess(false), 3000);
     } catch {
       setImportError("Failed to import data. Please try again.");
+    } finally {
+      setShowImportConfirm(false);
+      setPendingImportData(null);
     }
+  };
+
+  // Cancel import
+  const handleCancelImport = () => {
+    setShowImportConfirm(false);
+    setPendingImportData(null);
+  };
+
+  // Export current data (for download before import)
+  const handleExportCurrent = () => {
+    // The export logic is already handled by ExportPanel
+    // This function is called from ImportConfirmModal's "Download current data" button
+    const link = document.createElement("a");
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    link.href = URL.createObjectURL(blob);
+    link.download = "slicing-pie-backup.json";
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   // Prepare export data
@@ -539,7 +550,7 @@ NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
             pdfTitle={`${company.name} - Equity Report`}
             pdfTables={pdfTables}
             pdfFilename="slicing-pie-report"
-            onImport={handleImport}
+            onImport={handleImportSelect}
           />
         </CardBody>
       </Card>
@@ -666,6 +677,16 @@ NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
           </div>
         </div>
       </Modal>
+
+      {/* Import Confirmation Modal */}
+      <ImportConfirmModal
+        isOpen={showImportConfirm}
+        onClose={handleCancelImport}
+        onConfirm={handleConfirmImport}
+        onExportCurrent={handleExportCurrent}
+        importData={pendingImportData}
+        hasExistingData={contributors.length > 0 || contributions.length > 0}
+      />
     </div>
   );
 }

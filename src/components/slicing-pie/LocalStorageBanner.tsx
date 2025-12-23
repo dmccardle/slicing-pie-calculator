@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { ImportConfirmModal } from "./ImportConfirmModal";
 import { useExport } from "@/hooks/useExport";
 import type { Company, Contributor, Contribution } from "@/types/slicingPie";
 import {
@@ -186,39 +186,14 @@ export function LocalStorageBanner({
         </div>
       </div>
 
-      <Modal
+      <ImportConfirmModal
         isOpen={showImportModal}
         onClose={handleCancelImport}
-        title="Confirm Import"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            This will replace all your current data with the imported file.
-          </p>
-          {pendingImportData && (
-            <div className="rounded-lg bg-gray-50 p-3 text-sm">
-              <p className="font-medium text-gray-900">
-                {pendingImportData.company.name || "Unnamed Company"}
-              </p>
-              <p className="text-gray-600">
-                {pendingImportData.contributors.length} contributor(s),{" "}
-                {pendingImportData.contributions.length} contribution(s)
-              </p>
-            </div>
-          )}
-          <p className="text-sm text-amber-600">
-            Your current data will be permanently replaced.
-          </p>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={handleCancelImport}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleConfirmImport}>
-              Import
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={handleConfirmImport}
+        onExportCurrent={handleExport}
+        importData={pendingImportData}
+        hasExistingData={contributors.length > 0 || contributions.length > 0}
+      />
     </>
   );
 }

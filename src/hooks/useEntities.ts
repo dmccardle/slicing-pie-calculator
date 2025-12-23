@@ -39,6 +39,7 @@ export interface UseEntitiesReturn<T extends Entity> {
   getActive: () => T[];
   getDeleted: () => T[];
   clear: () => void;
+  setAll: (entities: T[]) => void;
   isLoading: boolean;
   error: string | null;
 }
@@ -232,6 +233,17 @@ export function useEntities<T extends Entity>(
     setEntities([]);
   }, [setEntities]);
 
+  /**
+   * Replace all entities with a new array (for bulk import)
+   * This avoids the race condition of clear + multiple adds
+   */
+  const setAll = useCallback(
+    (newEntities: T[]) => {
+      setEntities(newEntities);
+    },
+    [setEntities]
+  );
+
   return useMemo(
     () => ({
       entities,
@@ -244,10 +256,11 @@ export function useEntities<T extends Entity>(
       getActive,
       getDeleted,
       clear,
+      setAll,
       isLoading,
       error,
     }),
-    [entities, add, update, remove, softDelete, restore, getById, getActive, getDeleted, clear, isLoading, error]
+    [entities, add, update, remove, softDelete, restore, getById, getActive, getDeleted, clear, setAll, isLoading, error]
   );
 }
 
